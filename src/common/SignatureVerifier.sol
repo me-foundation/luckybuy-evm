@@ -1,0 +1,68 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.28;
+
+import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+
+import "./interfaces/IMESignatureVerifier.sol";
+
+contract MESignatureVerifier is IMESignatureVerifier, EIP712 {
+    using ECDSA for bytes32;
+
+    constructor(
+        string memory name,
+        string memory version
+    ) EIP712(name, version) {}
+
+    /// @notice Hashes a commit
+    /// @param commit Commit to hash
+    /// @return Hash of the commit
+    function hash(CommitData calldata commit) public view returns (bytes32) {
+        return _hash(commit);
+    }
+
+    /// @dev Internal function to hash a commit
+    /// @param commit Commit to hash
+    /// @return Hash of the commit
+    function _hash(CommitData calldata commit) internal view returns (bytes32) {
+        return
+            _hashTypedDataV4(
+                keccak256(
+                    abi.encode(
+                        keccak256(
+                            "CommitData(uint256 id,address from,address cosigner,uint256 seed,uint256 counter,bytes orderHash)"
+                        ),
+                        commit.id,
+                        commit.from,
+                        commit.cosigner,
+                        commit.seed,
+                        commit.counter,
+                        commit.orderHash
+                    )
+                )
+            );
+    }
+
+    /// @notice Verifies the signature for a given NFTVoucher, returning the address of the signer.
+    /// @dev Will revert if the signature is invalid. Does not verify that the signer is authorized to mint NFTs.
+    /// @param commit A commit.
+    /// @param signature An EIP712 signature of the given commit.
+    function verify(
+        CommitData calldata commit,
+        bytes memory signature
+    ) public view returns (address) {
+        return _verify(commit, signature);
+    }
+
+    /// @dev Internal function to verify a claim voucher
+    /// @param commit Commit to verify
+    /// @param signature Signature to verify
+    /// @return Address of the signer
+    function _verify(
+        CommitData calldata commit,
+        bytes memory signature
+    ) internal view returns (address) {
+        bytes32 digest = _hash(commit);
+        return ECDSA.recover(digest, signature);
+    }
+}
