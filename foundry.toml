@@ -1,2 +1,6 @@
 [profile.ci.fuzz]
 runs = 10_000
+
+
+[profile.default]
+fs_permissions = [{ access = "read-write", path = "./"}]
