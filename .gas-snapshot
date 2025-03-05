@@ -1,1 +1,6 @@
-TestContract:testBar() (gas: 401)
+TestSignatureVerifier:testHashConsistency() (gas: 32552)
+TestSignatureVerifier:testMalformedSignature() (gas: 27189)
+TestSignatureVerifier:testSignatureWithDifferentPrivateKey() (gas: 43477)
+TestSignatureVerifier:testVerifyDifferentCommitFields() (gas: 112004)
+TestSignatureVerifier:testVerifyModifiedCommitFails() (gas: 47191)
+TestSignatureVerifier:testVerifyValidSignature() (gas: 47207)
