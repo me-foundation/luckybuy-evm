@@ -8,14 +8,14 @@ import "src/common/interfaces/IMESignatureVerifier.sol";
 
 contract TestMESignatureVerifier is Test {
     MESignatureVerifier sigVerifier;
-    uint256 cosignerPrivateKey = 0x1234;
+    uint256 cosignerPrivateKey = vm.envUint("PRIVATE_KEY");
     address cosignerAddress;
 
     // Sample commit data for testing
     IMESignatureVerifier.CommitData commitData;
 
     function setUp() public {
-        sigVerifier = new MESignatureVerifier("MESignatureVerifier", "1");
+        sigVerifier = new MESignatureVerifier("MagicSigner", "1");
         cosignerAddress = vm.addr(cosignerPrivateKey);
 
         // Initialize sample commit data
@@ -23,10 +23,15 @@ contract TestMESignatureVerifier is Test {
             id: 1,
             from: address(0xABCD),
             cosigner: cosignerAddress,
-            seed: 42,
-            counter: 123,
+            seed: 1,
+            counter: 1,
             orderHash: abi.encodePacked(bytes32(uint256(0x5678)))
         });
+    }
+
+    function testOutput() public {
+        console.log(cosignerAddress);
+        console.log(address(sigVerifier));
     }
 
     function _signCommit(
