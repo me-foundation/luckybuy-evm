@@ -8,7 +8,7 @@ import "src/common/interfaces/ISignatureVerifier.sol";
 
 contract TestSignatureVerifier is Test {
     SignatureVerifier sigVerifier;
-    uint256 cosignerPrivateKey = vm.envUint("PRIVATE_KEY");
+    uint256 cosignerPrivateKey = 0x1; //vm.envUint("PRIVATE_KEY");
     address cosignerAddress;
 
     // Sample commit data for testing
