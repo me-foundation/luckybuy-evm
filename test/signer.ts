@@ -7,32 +7,30 @@ dotenv.config();
 
 async function testMagicSigner() {
   try {
-    // Get private keys from env
-    const cosigner1Key = process.env.PRIVATE_KEY;
-
-    if (!cosigner1Key) {
+    if (!process.env.PRIVATE_KEY) {
       throw new Error("Missing private keys in environment variable");
     }
 
     const contract = "0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f"; // match solidity tests
+    const chainId = 31337; // Anvil
 
-    const id = BigInt(1);
-    const from = "0x0000000000000000000000000000000000005678";
-    const cosigner = "0xCf03Dd0a894Ef79CB5b601A43C4b25E3Ae4c67eD"; // from MESignatureVerifier.sol
-    const seed = BigInt(1);
-    const counter = BigInt(1);
-    const orderHash = "0x0000000000000000000000000000000000005678";
-
-    const chainId = 31337;
-
-    // Create instances for both cosigners
     const signer = new MagicSigner({
       contract,
-      privateKey: cosigner1Key,
-      chainId, // forge testnet, change as needed
+      privateKey: process.env.PRIVATE_KEY,
+      chainId,
     });
 
-    // Create vouchers with both signatures
+    console.log("Signer address:", signer.address);
+
+    const id = BigInt(1);
+
+    const from = "0xE052c9CFe22B5974DC821cBa907F1DAaC7979c94";
+    const cosigner = signer.address;
+    const seed = BigInt(1);
+    const counter = BigInt(1);
+
+    const orderHash = "0x0";
+
     const result1 = await signer.signCommit(
       id,
       from,
@@ -51,12 +49,5 @@ async function testMagicSigner() {
     console.error("Test failed:", error);
   }
 }
-
-// Create .env file with these variables
-// .env
-/*
-COSIGNER1_PRIVATE_KEY=your_private_key_1_here
-COSIGNER2_PRIVATE_KEY=your_private_key_2_here
-*/
 
 testMagicSigner();

@@ -4,41 +4,60 @@ pragma solidity 0.8.28;
 import "forge-std/Test.sol";
 
 import "src/common/SignatureVerifier.sol";
-import "src/common/interfaces/IMESignatureVerifier.sol";
+import "src/common/interfaces/ISignatureVerifier.sol";
 
-contract TestMESignatureVerifier is Test {
-    MESignatureVerifier sigVerifier;
+contract TestSignatureVerifier is Test {
+    SignatureVerifier sigVerifier;
     uint256 cosignerPrivateKey = vm.envUint("PRIVATE_KEY");
     address cosignerAddress;
 
     // Sample commit data for testing
-    IMESignatureVerifier.CommitData commitData;
+    ISignatureVerifier.CommitData commitData;
 
     function setUp() public {
-        sigVerifier = new MESignatureVerifier("MagicSigner", "1");
+        sigVerifier = new SignatureVerifier("MagicSigner", "1");
         cosignerAddress = vm.addr(cosignerPrivateKey);
 
         // Initialize sample commit data
-        commitData = IMESignatureVerifier.CommitData({
+        commitData = ISignatureVerifier.CommitData({
             id: 1,
-            from: address(0xABCD),
+            receiver: 0xE052c9CFe22B5974DC821cBa907F1DAaC7979c94,
             cosigner: cosignerAddress,
             seed: 1,
             counter: 1,
-            orderHash: abi.encodePacked(bytes32(uint256(0x5678)))
+            orderHash: "0x0"
         });
+
+        console.log("Commit data:");
+        console.log("id:", commitData.id);
+        console.log("receiver:", commitData.receiver);
+        console.log("cosigner:", commitData.cosigner);
+        console.log("seed:", commitData.seed);
+        console.log("counter:", commitData.counter);
+        console.log("orderHash:", commitData.orderHash);
+
+        console.logBytes32(sigVerifier.hash(commitData));
     }
 
-    function testOutput() public {
-        console.log(cosignerAddress);
-        console.log(address(sigVerifier));
-    }
+    // Quick way to test the signature from the typescript test
+    //function testTypescriptSignatures() public {
+    //    bytes
+    //        memory signature = hex"09a0f1a38d41262e87c6bfc526c9a415b94ca4126e6cecba371a0efacf3db47c4ec97521c9ccc9396dcdf8e664ea57d04a1caa956c53180e2330b61908bacff61b";
+    //
+    //    address recovered = sigVerifier.debugVerify(
+    //        0xa1ad0acce1b2568da1ab9d0687af53984d6e8396a4feb3b4cf2fd70115171bc0,
+    //        signature
+    //    );
+    //
+    //    console.log("Recovered:", recovered);
+    //}
 
     function _signCommit(
-        IMESignatureVerifier.CommitData memory commit
+        ISignatureVerifier.CommitData memory commit
     ) internal returns (bytes memory signature) {
         // Sign voucher with cosigner's private key
         bytes32 digest = sigVerifier.hash(commit);
+        console.logBytes32(digest);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(cosignerPrivateKey, digest);
 
         return abi.encodePacked(r, s, v);
@@ -71,7 +90,7 @@ contract TestMESignatureVerifier is Test {
         bytes memory signature = _signCommit(commitData);
 
         // Create a modified commit with a different id
-        IMESignatureVerifier.CommitData memory modifiedCommit = commitData;
+        ISignatureVerifier.CommitData memory modifiedCommit = commitData;
         modifiedCommit.id = 999;
 
         // Verify the signature with modified commit data
@@ -92,7 +111,7 @@ contract TestMESignatureVerifier is Test {
         bytes memory originalSignature = _signCommit(commitData);
 
         // Test id field
-        IMESignatureVerifier.CommitData memory modifiedCommit = commitData;
+        ISignatureVerifier.CommitData memory modifiedCommit = commitData;
         modifiedCommit.id = commitData.id + 1;
         address recoveredSigner = sigVerifier.verify(
             modifiedCommit,
@@ -103,13 +122,13 @@ contract TestMESignatureVerifier is Test {
             "Changing id should invalidate signature"
         );
 
-        // Test from field
+        // Test receiver field
         modifiedCommit = commitData;
-        modifiedCommit.from = address(0x1111);
+        modifiedCommit.receiver = address(0x1111);
         recoveredSigner = sigVerifier.verify(modifiedCommit, originalSignature);
         assertTrue(
             recoveredSigner != cosignerAddress,
-            "Changing from should invalidate signature"
+            "Changing receiver should invalidate signature"
         );
 
         // Test cosigner field
@@ -141,7 +160,7 @@ contract TestMESignatureVerifier is Test {
 
         // Test orderHash field
         modifiedCommit = commitData;
-        modifiedCommit.orderHash = abi.encodePacked(bytes32(uint256(0x9999)));
+        modifiedCommit.orderHash = "0x1";
         recoveredSigner = sigVerifier.verify(modifiedCommit, originalSignature);
         assertTrue(
             recoveredSigner != cosignerAddress,

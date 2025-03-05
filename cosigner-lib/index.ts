@@ -11,7 +11,7 @@ interface CommitParams {
 
 interface CommitData {
   id: bigint;
-  from: string;
+  receiver: string;
   cosigner: string;
   seed: bigint;
   counter: bigint;
@@ -51,7 +51,7 @@ export class MagicSigner {
 
   async signCommit(
     id: bigint,
-    from: string,
+    receiver: string,
     cosigner: string,
     seed: bigint,
     counter: bigint,
@@ -62,38 +62,41 @@ export class MagicSigner {
     signature: string;
     digest: string;
   }> {
-    if (!ethers.isAddress(from) || !ethers.isAddress(cosigner)) {
+    if (!ethers.isAddress(receiver) || !ethers.isAddress(cosigner)) {
       throw new Error("Invalid address");
     }
 
+    const domain = this._signingDomain();
+
+    const types = {
+      CommitData: [
+        { name: "id", type: "uint256" },
+        { name: "receiver", type: "address" },
+        { name: "cosigner", type: "address" },
+        { name: "seed", type: "uint256" },
+        { name: "counter", type: "uint256" },
+        { name: "orderHash", type: "string" },
+      ],
+    };
+
     const commit: CommitData = {
       id,
-      from,
+      receiver,
       cosigner,
       seed,
       counter,
       orderHash,
     };
 
-    const domain = this._signingDomain();
-
-    const types = {
-      Commit: [
-        { name: "id", type: "uint256" },
-        { name: "from", type: "address" },
-        { name: "cosigner", type: "address" },
-        { name: "seed", type: "uint256" },
-        { name: "counter", type: "uint256" },
-        { name: "orderHash", type: "bytes" },
-      ],
-    };
+    console.log(domain);
 
     const signature = await this.signer.signTypedData(domain, types, commit);
     const digest = ethers.TypedDataEncoder.hash(domain, types, commit);
-
+    console.log("digest:", digest);
+    console.log("signature:", signature);
     const callData = this._signCommitCallData(
       id,
-      from,
+      receiver,
       cosigner,
       seed,
       counter,
@@ -110,7 +113,7 @@ export class MagicSigner {
 
   _signCommitCallData(
     id: bigint,
-    from: string,
+    receiver: string,
     cosigner: string,
     seed: bigint,
     counter: bigint,
@@ -118,7 +121,7 @@ export class MagicSigner {
   ) {
     const structData = {
       id,
-      from,
+      receiver,
       cosigner,
       seed,
       counter,
@@ -128,17 +131,17 @@ export class MagicSigner {
     // Define the types for encoding
     const types = [
       "uint256", // id
-      "address", // from
+      "address", // receiver
       "address", // cosigner
       "uint256", // seed
       "uint256", // counter
-      "bytes", // orderHash
+      "string", // orderHash
     ];
 
     // Encode the parameters
     const encodedData = ethers.AbiCoder.defaultAbiCoder().encode(types, [
       structData.id,
-      structData.from,
+      structData.receiver,
       structData.cosigner,
       structData.seed,
       structData.counter,

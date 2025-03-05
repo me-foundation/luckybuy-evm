@@ -4,9 +4,9 @@ pragma solidity 0.8.28;
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-import "./interfaces/IMESignatureVerifier.sol";
+import "./interfaces/ISignatureVerifier.sol";
 
-contract MESignatureVerifier is IMESignatureVerifier, EIP712 {
+contract SignatureVerifier is ISignatureVerifier, EIP712 {
     using ECDSA for bytes32;
 
     constructor(
@@ -30,10 +30,10 @@ contract MESignatureVerifier is IMESignatureVerifier, EIP712 {
                 keccak256(
                     abi.encode(
                         keccak256(
-                            "CommitData(uint256 id,address from,address cosigner,uint256 seed,uint256 counter,bytes orderHash)"
+                            "CommitData(uint256 id,address receiver,address cosigner,uint256 seed,uint256 counter,string orderHash)"
                         ),
                         commit.id,
-                        commit.from,
+                        commit.receiver,
                         commit.cosigner,
                         commit.seed,
                         commit.counter,
@@ -43,7 +43,7 @@ contract MESignatureVerifier is IMESignatureVerifier, EIP712 {
             );
     }
 
-    /// @notice Verifies the signature for a given NFTVoucher, returning the address of the signer.
+    /// @notice Verifies the signature for a given Commit, returning the address of the signer.
     /// @dev Will revert if the signature is invalid. Does not verify that the signer is authorized to mint NFTs.
     /// @param commit A commit.
     /// @param signature An EIP712 signature of the given commit.
@@ -54,7 +54,7 @@ contract MESignatureVerifier is IMESignatureVerifier, EIP712 {
         return _verify(commit, signature);
     }
 
-    /// @dev Internal function to verify a claim voucher
+    /// @dev Internal function to verify a commit
     /// @param commit Commit to verify
     /// @param signature Signature to verify
     /// @return Address of the signer
@@ -63,6 +63,17 @@ contract MESignatureVerifier is IMESignatureVerifier, EIP712 {
         bytes memory signature
     ) internal view returns (address) {
         bytes32 digest = _hash(commit);
+        return ECDSA.recover(digest, signature);
+    }
+
+    /// @dev Internal function to verify a commit
+    /// @param digest Digest to verify
+    /// @param signature Signature to verify
+    /// @return Address of the signer
+    function debugVerify(
+        bytes32 digest,
+        bytes memory signature
+    ) public view returns (address) {
         return ECDSA.recover(digest, signature);
     }
 }
