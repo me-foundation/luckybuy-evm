@@ -88,12 +88,9 @@ export class MagicSigner {
       orderHash,
     };
 
-    console.log(domain);
-
     const signature = await this.signer.signTypedData(domain, types, commit);
     const digest = ethers.TypedDataEncoder.hash(domain, types, commit);
-    console.log("digest:", digest);
-    console.log("signature:", signature);
+
     const callData = this._signCommitCallData(
       id,
       receiver,
