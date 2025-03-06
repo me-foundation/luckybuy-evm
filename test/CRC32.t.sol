@@ -26,21 +26,21 @@ contract TestCRC32 is Test {
         console.log("CRC32 of 'test' (hex):", toHexString(result));
     }
 
-    function test_generate_1k() public {
-        _generateCRC32Values(1000, OUTPUT_1K);
-    }
-
-    function test_generate_10k() public {
-        _generateCRC32Values(10000, OUTPUT_10K);
-    }
-
-    function test_generate_100k() public {
-        _generateCRC32Values(100000, OUTPUT_100K);
-    }
-
-    function test_generate_1m() public {
-        _generateCRC32Values(1000000, OUTPUT_1M);
-    }
+    //function test_generate_1k() public {
+    //    _generateCRC32Values(1000, OUTPUT_1K);
+    //}
+    //
+    //function test_generate_10k() public {
+    //    _generateCRC32Values(10000, OUTPUT_10K);
+    //}
+    //
+    //function test_generate_100k() public {
+    //    _generateCRC32Values(100000, OUTPUT_100K);
+    //}
+    //
+    //function test_generate_1m() public {
+    //    _generateCRC32Values(1000000, OUTPUT_1M);
+    //}
 
     /**
      * @dev Helper function to generate a specified number of CRC32 values and write to file

@@ -8,6 +8,10 @@ pragma solidity ^0.8.0;
  * ref: https://gist.github.com/kbhokray/683f4260f9c13a767fcfdac2ac3ee188
  * ref: https://reveng.sourceforge.io/crc-catalogue/all.htm#crc.cat.crc-32-iso-hdlc
  *
+ * check online:
+ * https://www.browserling.com/tools/crc32-hash
+ * https://crccalc.com/?crc=test&method=&datatype=ascii&outtype=hex
+ *
  * The CRC-32 ISO-HDLC algorithm uses the following parameters:
  * - Width: 32 bits
  * - Polynomial: 0x04C11DB7 (expressed in the standard form used in specifications)
