@@ -1,4 +1,5 @@
 .DS_Store
+node_modules
 lcov.info
 coverage/
 cache/
@@ -8,3 +9,4 @@ node_modules/
 crc32_100k.csv
 crc32_10k.csv
 crc32_1m.csv
+

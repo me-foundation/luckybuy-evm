@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: Unlicense
 pragma solidity 0.8.28;
 
+import "./common/SignatureVerifier.sol";
+
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./common/MEAccessControl.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
-contract LuckyBuy is MEAccessControl, Pausable {
+contract LuckyBuy is MEAccessControl, Pausable, SignatureVerifier {
     uint256 public balance;
 
-    constructor() MEAccessControl() {
+    constructor() MEAccessControl() SignatureVerifier("LuckyBuy", "1") {
         uint256 existingBalance = address(this).balance;
         if (existingBalance > 0) {
             _depositTreasury(existingBalance);
