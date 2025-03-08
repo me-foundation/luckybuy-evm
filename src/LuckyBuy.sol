@@ -8,6 +8,7 @@ import "./common/MEAccessControl.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 contract LuckyBuy is MEAccessControl, Pausable, SignatureVerifier, CRC32 {
     uint256 public balance;
+    uint256 public commitedBalance;
 
     mapping(address cosigner => bool isActive) public cosigners;
 
@@ -50,6 +51,8 @@ contract LuckyBuy is MEAccessControl, Pausable, SignatureVerifier, CRC32 {
         if (msg.value == 0) revert InvalidAmount();
         if (!cosigners[cosigner_]) revert InvalidCoSigner();
         if (receiver_ == address(0)) revert InvalidReceiver();
+
+        // Check if balance can cover the commit.
 
         uint256 commitId = luckyBuys.length;
         uint256 userCounter = luckyBuyCount[receiver_]++;
