@@ -25,7 +25,8 @@ contract TestSignatureVerifier is Test {
             cosigner: cosignerAddress,
             seed: 1,
             counter: 1,
-            orderHash: "0x0"
+            orderHash: "0x0",
+            amount: 1e18
         });
 
         console.log("Commit data:");
@@ -40,17 +41,17 @@ contract TestSignatureVerifier is Test {
     }
 
     // Quick way to test the signature from the typescript test
-    //function testTypescriptSignatures() public {
-    //    bytes
-    //        memory signature = hex"09a0f1a38d41262e87c6bfc526c9a415b94ca4126e6cecba371a0efacf3db47c4ec97521c9ccc9396dcdf8e664ea57d04a1caa956c53180e2330b61908bacff61b";
-    //
-    //    address recovered = sigVerifier.debugVerify(
-    //        0xa1ad0acce1b2568da1ab9d0687af53984d6e8396a4feb3b4cf2fd70115171bc0,
-    //        signature
-    //    );
-    //
-    //    console.log("Recovered:", recovered);
-    //}
+    function testTypescriptSignatures() public {
+        bytes
+            memory signature = hex"f60aa0b05810cb445a035e11b741ef475789a77df0c84bdb520976981f041eeb173afa33d0ababc80aeb2cff73b2818392d36c7b0190c7730d3aea2ff08ac8731b";
+
+        address recovered = sigVerifier.debugVerify(
+            0xc969148ccb3d1166409f8fee28b6b4eb98af371000072924bd4d1ac487d1c3ae,
+            signature
+        );
+
+        console.log("Recovered:", recovered);
+    }
 
     function _signCommit(
         ISignatureVerifier.CommitData memory commit

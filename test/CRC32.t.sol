@@ -19,6 +19,12 @@ contract TestCRC32 is Test {
         crc32 = new CRC32();
     }
 
+    function test_keccak256() public {
+        uint32 crcHash = crc32.crc32(abi.encodePacked(keccak256("test")));
+
+        console.log(crcHash);
+    }
+
     function test_crc32_single() public {
         string memory data = "test";
         uint32 result = crc32.stringToCRC32(data);

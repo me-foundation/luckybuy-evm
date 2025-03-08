@@ -30,6 +30,7 @@ async function testMagicSigner() {
     const counter = BigInt(1);
 
     const orderHash = "0x0";
+    const amount = BigInt(1e18);
 
     const result1 = await signer.signCommit(
       id,
@@ -37,7 +38,8 @@ async function testMagicSigner() {
       cosigner,
       seed,
       counter,
-      orderHash
+      orderHash,
+      amount
     );
 
     console.log("Commit:", result1.commit);
