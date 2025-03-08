@@ -17,11 +17,22 @@ contract LuckyBuy is MEAccessControl, Pausable, SignatureVerifier, CRC32 {
 
     event Deposit(address indexed sender, uint256 amount);
     event Withdraw(address indexed sender, uint256 amount);
-    event Commit(address indexed sender, uint256 amount);
+    event Commit(
+        address sender,
+        uint256 id,
+        address receiver,
+        address cosigner,
+        uint256 seed,
+        uint256 counter,
+        string orderHash,
+        uint256 amount
+    );
     event CosignerAdded(address indexed cosigner);
+    event CosignerRemoved(address indexed cosigner);
 
     error InvalidAmount();
     error InvalidCoSigner();
+    error InvalidReceiver();
 
     constructor() MEAccessControl() SignatureVerifier("LuckyBuy", "1") {
         uint256 existingBalance = address(this).balance;
@@ -29,12 +40,7 @@ contract LuckyBuy is MEAccessControl, Pausable, SignatureVerifier, CRC32 {
             _depositTreasury(existingBalance);
         }
     }
-    uint256 id;
-    address receiver;
-    address cosigner;
-    uint256 seed;
-    uint256 counter;
-    string orderHash;
+
     function commit(
         address receiver_,
         address cosigner_,
@@ -43,17 +49,32 @@ contract LuckyBuy is MEAccessControl, Pausable, SignatureVerifier, CRC32 {
     ) external payable {
         if (msg.value == 0) revert InvalidAmount();
         if (!cosigners[cosigner_]) revert InvalidCoSigner();
+        if (receiver_ == address(0)) revert InvalidReceiver();
+
+        uint256 commitId = luckyBuys.length;
+        uint256 userCounter = luckyBuyCount[receiver_]++;
 
         luckyBuys.push(
             CommitData({
-                id: luckyBuys.length,
+                id: commitId,
                 receiver: receiver_,
                 cosigner: cosigner_,
                 seed: seed_,
-                counter: luckyBuyCount[receiver]++,
+                counter: userCounter,
                 orderHash: orderHash_,
                 amount: msg.value
             })
+        );
+
+        emit Commit(
+            msg.sender,
+            commitId,
+            receiver_,
+            cosigner_,
+            seed_,
+            userCounter,
+            orderHash_,
+            msg.value
         );
     }
 
@@ -62,6 +83,13 @@ contract LuckyBuy is MEAccessControl, Pausable, SignatureVerifier, CRC32 {
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         cosigners[cosigner_] = true;
         emit CosignerAdded(cosigner_);
+    }
+
+    function removeCosigner(
+        address cosigner_
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        cosigners[cosigner_] = false;
+        emit CosignerRemoved(cosigner_);
     }
 
     function _depositTreasury(uint256 amount) internal {
