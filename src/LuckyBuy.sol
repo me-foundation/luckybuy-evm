@@ -34,6 +34,7 @@ contract LuckyBuy is MEAccessControl, Pausable, SignatureVerifier, CRC32 {
     error InvalidAmount();
     error InvalidCoSigner();
     error InvalidReceiver();
+    error LuckyBuyAlreadyFulfilled();
 
     constructor() MEAccessControl() SignatureVerifier("LuckyBuy", "1") {
         uint256 existingBalance = address(this).balance;
@@ -78,6 +79,16 @@ contract LuckyBuy is MEAccessControl, Pausable, SignatureVerifier, CRC32 {
             orderHash_,
             msg.value
         );
+    }
+
+    function fulfill(
+        uint256 luckyBuyId,
+        bytes memory digest,
+        bytes calldata signature
+    ) external {
+        if (luckyBuyIsFulfilled[luckyBuyId]) revert LuckyBuyAlreadyFulfilled();
+        CommitData memory commitData = luckyBuys[luckyBuyId];
+        // verify
     }
 
     function addCosigner(

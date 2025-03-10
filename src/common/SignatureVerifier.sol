@@ -17,14 +17,14 @@ contract SignatureVerifier is ISignatureVerifier, EIP712 {
     /// @notice Hashes a commit
     /// @param commit Commit to hash
     /// @return Hash of the commit
-    function hash(CommitData calldata commit) public view returns (bytes32) {
+    function hash(CommitData memory commit) public view returns (bytes32) {
         return _hash(commit);
     }
 
     /// @dev Internal function to hash a commit
     /// @param commit Commit to hash
     /// @return Hash of the commit
-    function _hash(CommitData calldata commit) internal view returns (bytes32) {
+    function _hash(CommitData memory commit) internal view returns (bytes32) {
         return
             _hashTypedDataV4(
                 keccak256(
