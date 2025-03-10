@@ -6,11 +6,16 @@ import "./common/CRC32.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./common/MEAccessControl.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
-contract LuckyBuy is MEAccessControl, Pausable, SignatureVerifier, CRC32 {
+import "./SignaturePRNG.sol";
+contract LuckyBuy is
+    MEAccessControl,
+    Pausable,
+    SignatureVerifier,
+    SignaturePRNG
+{
     uint256 public balance;
-    uint256 public commitedBalance;
 
-    mapping(address cosigner => bool isActive) public cosigners;
+    mapping(address cosigner => bool active) public isCosigner;
 
     CommitData[] public luckyBuys;
     mapping(uint256 luckyBuyId => bool isFulfilled) public luckyBuyIsFulfilled;
@@ -26,7 +31,8 @@ contract LuckyBuy is MEAccessControl, Pausable, SignatureVerifier, CRC32 {
         uint256 seed,
         uint256 counter,
         string orderHash,
-        uint256 amount
+        uint256 amount,
+        bytes32 digest
     );
     event CosignerAdded(address indexed cosigner);
     event CosignerRemoved(address indexed cosigner);
@@ -34,7 +40,9 @@ contract LuckyBuy is MEAccessControl, Pausable, SignatureVerifier, CRC32 {
     error InvalidAmount();
     error InvalidCoSigner();
     error InvalidReceiver();
+    error InvalidSignature();
     error LuckyBuyAlreadyFulfilled();
+    error InvalidDigest();
 
     constructor() MEAccessControl() SignatureVerifier("LuckyBuy", "1") {
         uint256 existingBalance = address(this).balance;
@@ -51,23 +59,23 @@ contract LuckyBuy is MEAccessControl, Pausable, SignatureVerifier, CRC32 {
         string calldata orderHash_
     ) external payable {
         if (msg.value == 0) revert InvalidAmount();
-        if (!cosigners[cosigner_]) revert InvalidCoSigner();
+        if (!isCosigner[cosigner_]) revert InvalidCoSigner();
         if (receiver_ == address(0)) revert InvalidReceiver();
 
         uint256 commitId = luckyBuys.length;
         uint256 userCounter = luckyBuyCount[receiver_]++;
 
-        luckyBuys.push(
-            CommitData({
-                id: commitId,
-                receiver: receiver_,
-                cosigner: cosigner_,
-                seed: seed_,
-                counter: userCounter,
-                orderHash: orderHash_,
-                amount: msg.value
-            })
-        );
+        CommitData memory commitData = CommitData({
+            id: commitId,
+            receiver: receiver_,
+            cosigner: cosigner_,
+            seed: seed_,
+            counter: userCounter,
+            orderHash: orderHash_,
+            amount: msg.value
+        });
+
+        luckyBuys.push(commitData);
 
         emit Commit(
             msg.sender,
@@ -76,32 +84,44 @@ contract LuckyBuy is MEAccessControl, Pausable, SignatureVerifier, CRC32 {
             cosigner_,
             seed_,
             userCounter,
-            orderHash_,
-            msg.value
+            orderHash_, // Will be computed to check the match in the fulfill function
+            msg.value,
+            hash(commitData) // We should still verify this offchain.
         );
     }
 
-    function fulfill(
-        uint256 luckyBuyId,
-        bytes memory digest,
-        bytes calldata signature
-    ) external {
+    // WIP
+    function fulfill(uint256 luckyBuyId, bytes calldata signature) external {
         if (luckyBuyIsFulfilled[luckyBuyId]) revert LuckyBuyAlreadyFulfilled();
         CommitData memory commitData = luckyBuys[luckyBuyId];
         // verify
+        address cosigner = verify(commitData, signature);
+
+        if (!isCosigner[cosigner]) revert InvalidSignature();
+
+        luckyBuyIsFulfilled[luckyBuyId] = true;
+
+        // Get the odds from the raw order data.
+
+        // Check if winner
+
+        // Finish fulfillment
+        // Win, buy and xfer nft
+        // Win, nft not avaiable, send eth
+        // Fail, do nothing.
     }
 
     function addCosigner(
         address cosigner_
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        cosigners[cosigner_] = true;
+        isCosigner[cosigner_] = true;
         emit CosignerAdded(cosigner_);
     }
 
     function removeCosigner(
         address cosigner_
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        cosigners[cosigner_] = false;
+        isCosigner[cosigner_] = false;
         emit CosignerRemoved(cosigner_);
     }
 

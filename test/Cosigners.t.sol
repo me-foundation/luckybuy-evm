@@ -29,7 +29,7 @@ contract LuckyBuyTest is Test {
         emit CosignerAdded(cosigner1);
         luckyBuy.addCosigner(cosigner1);
 
-        assertTrue(luckyBuy.cosigners(cosigner1), "Cosigner should be active");
+        assertTrue(luckyBuy.isCosigner(cosigner1), "Cosigner should be active");
         vm.stopPrank();
     }
 
@@ -46,7 +46,7 @@ contract LuckyBuyTest is Test {
         luckyBuy.addCosigner(cosigner1);
 
         assertFalse(
-            luckyBuy.cosigners(cosigner1),
+            luckyBuy.isCosigner(cosigner1),
             "Cosigner should not be active"
         );
         vm.stopPrank();
@@ -56,7 +56,7 @@ contract LuckyBuyTest is Test {
         vm.startPrank(admin);
         luckyBuy.addCosigner(cosigner1);
         assertTrue(
-            luckyBuy.cosigners(cosigner1),
+            luckyBuy.isCosigner(cosigner1),
             "Cosigner should be active after first addition"
         );
 
@@ -65,7 +65,7 @@ contract LuckyBuyTest is Test {
         luckyBuy.addCosigner(cosigner1);
 
         assertTrue(
-            luckyBuy.cosigners(cosigner1),
+            luckyBuy.isCosigner(cosigner1),
             "Cosigner should remain active after second addition"
         );
         vm.stopPrank();
@@ -77,22 +77,22 @@ contract LuckyBuyTest is Test {
         luckyBuy.addCosigner(cosigner1);
 
         assertTrue(
-            luckyBuy.cosigners(cosigner1),
+            luckyBuy.isCosigner(cosigner1),
             "First cosigner should be active"
         );
         assertFalse(
-            luckyBuy.cosigners(cosigner2),
+            luckyBuy.isCosigner(cosigner2),
             "Second cosigner should not be active yet"
         );
 
         luckyBuy.addCosigner(cosigner2);
 
         assertTrue(
-            luckyBuy.cosigners(cosigner1),
+            luckyBuy.isCosigner(cosigner1),
             "First cosigner should remain active"
         );
         assertTrue(
-            luckyBuy.cosigners(cosigner2),
+            luckyBuy.isCosigner(cosigner2),
             "Second cosigner should be active"
         );
         vm.stopPrank();
@@ -107,7 +107,7 @@ contract LuckyBuyTest is Test {
         luckyBuy.addCosigner(zeroAddress);
 
         assertTrue(
-            luckyBuy.cosigners(zeroAddress),
+            luckyBuy.isCosigner(zeroAddress),
             "Zero address should be active as cosigner"
         );
         vm.stopPrank();
@@ -117,7 +117,7 @@ contract LuckyBuyTest is Test {
         vm.startPrank(admin);
         luckyBuy.addCosigner(cosigner1);
         assertTrue(
-            luckyBuy.cosigners(cosigner1),
+            luckyBuy.isCosigner(cosigner1),
             "Cosigner should be active before removal"
         );
 
@@ -126,7 +126,7 @@ contract LuckyBuyTest is Test {
         luckyBuy.removeCosigner(cosigner1);
 
         assertFalse(
-            luckyBuy.cosigners(cosigner1),
+            luckyBuy.isCosigner(cosigner1),
             "Cosigner should be inactive after removal"
         );
         vm.stopPrank();
@@ -149,7 +149,7 @@ contract LuckyBuyTest is Test {
         luckyBuy.removeCosigner(cosigner1);
 
         assertTrue(
-            luckyBuy.cosigners(cosigner1),
+            luckyBuy.isCosigner(cosigner1),
             "Cosigner should remain active"
         );
         vm.stopPrank();
@@ -158,7 +158,7 @@ contract LuckyBuyTest is Test {
     function testRemoveNonExistentCosigner() public {
         vm.startPrank(admin);
         assertFalse(
-            luckyBuy.cosigners(cosigner1),
+            luckyBuy.isCosigner(cosigner1),
             "Cosigner should not be active initially"
         );
 
@@ -167,7 +167,7 @@ contract LuckyBuyTest is Test {
         luckyBuy.removeCosigner(cosigner1);
 
         assertFalse(
-            luckyBuy.cosigners(cosigner1),
+            luckyBuy.isCosigner(cosigner1),
             "Cosigner should remain inactive"
         );
         vm.stopPrank();
@@ -178,7 +178,7 @@ contract LuckyBuyTest is Test {
         luckyBuy.addCosigner(cosigner1);
         luckyBuy.removeCosigner(cosigner1);
         assertFalse(
-            luckyBuy.cosigners(cosigner1),
+            luckyBuy.isCosigner(cosigner1),
             "Cosigner should be inactive after first removal"
         );
 
@@ -187,7 +187,7 @@ contract LuckyBuyTest is Test {
         luckyBuy.removeCosigner(cosigner1);
 
         assertFalse(
-            luckyBuy.cosigners(cosigner1),
+            luckyBuy.isCosigner(cosigner1),
             "Cosigner should remain inactive after second removal"
         );
         vm.stopPrank();
@@ -224,19 +224,19 @@ contract LuckyBuyTest is Test {
 
         luckyBuy.addCosigner(cosigner1);
         assertTrue(
-            luckyBuy.cosigners(cosigner1),
+            luckyBuy.isCosigner(cosigner1),
             "Cosigner should be active after addition"
         );
 
         luckyBuy.removeCosigner(cosigner1);
         assertFalse(
-            luckyBuy.cosigners(cosigner1),
+            luckyBuy.isCosigner(cosigner1),
             "Cosigner should be inactive after removal"
         );
 
         luckyBuy.addCosigner(cosigner1);
         assertTrue(
-            luckyBuy.cosigners(cosigner1),
+            luckyBuy.isCosigner(cosigner1),
             "Cosigner should be active after re-addition"
         );
         vm.stopPrank();

@@ -76,7 +76,7 @@ contract CRC32 {
      * @param data The input byte array to calculate the CRC32 hash for
      * @return The 32-bit CRC value as a uint32
      */
-    function crc32(bytes memory data) public view returns (uint32) {
+    function crc32(bytes32 data) public view returns (uint32) {
         unchecked {
             // Initialize CRC with all 1's (0xFFFFFFFF) as per the standard
             uint256 crc = 0xFFFFFFFF;
@@ -105,6 +105,6 @@ contract CRC32 {
      * @return The 32-bit CRC value as a uint32
      */
     function stringToCRC32(string memory input) public view returns (uint32) {
-        return crc32(bytes(input));
+        return crc32(keccak256(bytes(input)));
     }
 }
