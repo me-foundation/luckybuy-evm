@@ -21,7 +21,7 @@ contract TestCRC32 is Test {
 
     function test_crc32_single() public {
         string memory data = "test";
-        uint32 result = crc32.stringToCRC32(data);
+        uint32 result = crc32.crc32(data);
         console.log("CRC32 of 'test':", result);
         console.log("CRC32 of 'test' (hex):", toHexString(result));
     }
@@ -61,7 +61,7 @@ contract TestCRC32 is Test {
             );
 
             // Calculate CRC32
-            uint32 crcValue = crc32.stringToCRC32(input);
+            uint32 crcValue = crc32.crc32(input);
 
             // Format as CSV row: index,input,decimal,hex
             string memory row = string(

@@ -97,6 +97,15 @@ contract CRC32 {
         }
     }
 
+    function crc32(bytes32 sigHash) public view returns (uint32) {
+        bytes memory sigHashBytes = new bytes(32);
+        for (uint i = 0; i < 32; i++) {
+            sigHashBytes[i] = sigHash[i];
+        }
+
+        return crc32(sigHashBytes);
+    }
+
     /**
      * @dev Calculate CRC32 hash of a string.
      * This is a convenience function that converts the string to bytes first.
@@ -104,7 +113,7 @@ contract CRC32 {
      * @param input The input string to calculate the CRC32 hash for
      * @return The 32-bit CRC value as a uint32
      */
-    function stringToCRC32(string memory input) public view returns (uint32) {
+    function crc32(string memory input) public view returns (uint32) {
         return crc32(bytes(input));
     }
 }
