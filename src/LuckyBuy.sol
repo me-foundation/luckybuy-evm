@@ -42,6 +42,7 @@ contract LuckyBuy is MEAccessControl, Pausable, SignatureVerifier, CRC32 {
         }
     }
 
+    // WIP more to follow, just getting the rng working for now
     function commit(
         address receiver_,
         address cosigner_,
@@ -51,8 +52,6 @@ contract LuckyBuy is MEAccessControl, Pausable, SignatureVerifier, CRC32 {
         if (msg.value == 0) revert InvalidAmount();
         if (!cosigners[cosigner_]) revert InvalidCoSigner();
         if (receiver_ == address(0)) revert InvalidReceiver();
-
-        // Check if balance can cover the commit.
 
         uint256 commitId = luckyBuys.length;
         uint256 userCounter = luckyBuyCount[receiver_]++;
@@ -96,6 +95,7 @@ contract LuckyBuy is MEAccessControl, Pausable, SignatureVerifier, CRC32 {
     }
 
     function _depositTreasury(uint256 amount) internal {
+        if (amount == 0) revert InvalidAmount();
         balance += amount;
         emit Deposit(msg.sender, amount);
     }
