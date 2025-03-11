@@ -65,15 +65,4 @@ contract SignatureVerifier is ISignatureVerifier, EIP712 {
         bytes32 digest = _hash(commit);
         return ECDSA.recover(digest, signature);
     }
-
-    /// @dev Internal function to verify a commit
-    /// @param digest Digest to verify
-    /// @param signature Signature to verify
-    /// @return Address of the signer
-    function debugVerify(
-        bytes32 digest,
-        bytes memory signature
-    ) public view returns (address) {
-        return ECDSA.recover(digest, signature);
-    }
 }
