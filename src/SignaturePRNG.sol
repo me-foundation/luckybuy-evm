@@ -22,7 +22,7 @@ contract SignaturePRNG is CRC32 {
         }
 
         // Fallback, ~.39^14 chance of happening. (1 - (BASE_POINTS / 2^14)))^14
-        return _rngFallback(checksum); // Conversion must be explicit here even though checksum is uint32
+        return _rngFallback(checksum);
     }
 
     function _rngFallback(uint32 checksum) internal pure returns (uint32) {
