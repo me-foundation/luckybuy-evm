@@ -6,8 +6,22 @@ import "forge-std/Test.sol";
 import "src/common/SignatureVerifier.sol";
 import "src/common/interfaces/ISignatureVerifier.sol";
 
+contract MockSignatureVerifier is SignatureVerifier {
+    constructor(
+        string memory name,
+        string memory version
+    ) SignatureVerifier(name, version) {}
+
+    function debugVerify(
+        bytes32 digest,
+        bytes memory signature
+    ) public view returns (address) {
+        return ECDSA.recover(digest, signature);
+    }
+}
+
 contract TestSignatureVerifier is Test {
-    SignatureVerifier sigVerifier;
+    MockSignatureVerifier sigVerifier;
     uint256 cosignerPrivateKey = 0x1; //vm.envUint("PRIVATE_KEY");
     address cosignerAddress;
 
@@ -15,7 +29,7 @@ contract TestSignatureVerifier is Test {
     ISignatureVerifier.CommitData commitData;
 
     function setUp() public {
-        sigVerifier = new SignatureVerifier("MagicSigner", "1");
+        sigVerifier = new MockSignatureVerifier("MagicSigner", "1");
         cosignerAddress = vm.addr(cosignerPrivateKey);
 
         // Initialize sample commit data
@@ -26,7 +40,8 @@ contract TestSignatureVerifier is Test {
             seed: 1,
             counter: 1,
             orderHash: "0x0",
-            amount: 100
+            amount: 100,
+            reward: 1000 // 10% odds
         });
 
         console.log("Commit data:");
@@ -36,22 +51,24 @@ contract TestSignatureVerifier is Test {
         console.log("seed:", commitData.seed);
         console.log("counter:", commitData.counter);
         console.log("orderHash:", commitData.orderHash);
+        console.log("amount:", commitData.amount);
+        console.log("reward:", commitData.reward);
 
         console.logBytes32(sigVerifier.hash(commitData));
     }
 
     // Quick way to test the signature from the typescript test
-    //function testTypescriptSignatures() public {
-    //    bytes
-    //        memory signature = hex"09a0f1a38d41262e87c6bfc526c9a415b94ca4126e6cecba371a0efacf3db47c4ec97521c9ccc9396dcdf8e664ea57d04a1caa956c53180e2330b61908bacff61b";
-    //
-    //    address recovered = sigVerifier.debugVerify(
-    //        0xa1ad0acce1b2568da1ab9d0687af53984d6e8396a4feb3b4cf2fd70115171bc0,
-    //        signature
-    //    );
-    //
-    //    console.log("Recovered:", recovered);
-    //}
+    // /function testTypescriptSignatures() public {
+    // /    bytes
+    // /        memory signature = hex"56426ff5a075ea58127bd2e22329dd141b95bb0cb25cd89edeb4fda05a1e802a3fb7729fc0a86aaba34fc3a47885347b2fa3ae26588cf4b98449e82f9bfb9c0e1c";
+    // /
+    // /    address recovered = sigVerifier.debugVerify(
+    // /        0xfce7e46c5c5c646da95e8b9ef60753b303fc0b0f8342e17d42b113ee8d10381f,
+    // /        signature
+    // /    );
+    // /
+    // /    console.log("Recovered:", recovered);
+    // /}
 
     function _signCommit(
         ISignatureVerifier.CommitData memory commit
@@ -166,6 +183,24 @@ contract TestSignatureVerifier is Test {
         assertTrue(
             recoveredSigner != cosignerAddress,
             "Changing orderHash should invalidate signature"
+        );
+
+        // Test amount field
+        modifiedCommit = commitData;
+        modifiedCommit.amount = 1000;
+        recoveredSigner = sigVerifier.verify(modifiedCommit, originalSignature);
+        assertTrue(
+            recoveredSigner != cosignerAddress,
+            "Changing amount should invalidate signature"
+        );
+
+        // Test reward field
+        modifiedCommit = commitData;
+        modifiedCommit.reward = 10000;
+        recoveredSigner = sigVerifier.verify(modifiedCommit, originalSignature);
+        assertTrue(
+            recoveredSigner != cosignerAddress,
+            "Changing reward should invalidate signature"
         );
     }
 

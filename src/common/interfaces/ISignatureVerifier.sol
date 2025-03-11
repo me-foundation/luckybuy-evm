@@ -11,6 +11,7 @@ interface ISignatureVerifier {
         uint256 counter;
         string orderHash;
         uint256 amount;
+        uint256 reward;
     }
 
     function hash(

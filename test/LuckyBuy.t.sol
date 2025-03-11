@@ -14,6 +14,7 @@ contract TestLuckyBuyCommit is Test {
     uint256 seed = 12345;
     string orderHash = "testOrderHash123";
     uint256 amount = 1 ether;
+    uint256 reward = 1000; // 10% odds
 
     event Commit(
         address indexed sender,
@@ -24,6 +25,7 @@ contract TestLuckyBuyCommit is Test {
         uint256 counter,
         string orderHash,
         uint256 amount,
+        uint256 reward,
         bytes32 hash
     );
 
@@ -51,10 +53,17 @@ contract TestLuckyBuyCommit is Test {
             0, // First counter for this receiver should be 0
             orderHash,
             amount,
+            reward,
             bytes32(0) // We don't check the hash value
         );
 
-        luckyBuy.commit{value: amount}(receiver, cosigner, seed, orderHash);
+        luckyBuy.commit{value: amount}(
+            receiver,
+            cosigner,
+            seed,
+            orderHash,
+            reward
+        );
 
         assertEq(
             luckyBuy.luckyBuyCount(receiver),
@@ -69,7 +78,8 @@ contract TestLuckyBuyCommit is Test {
             uint256 storedSeed,
             uint256 storedCounter,
             string memory storedOrderHash,
-            uint256 storedAmount
+            uint256 storedAmount,
+            uint256 storedReward
         ) = luckyBuy.luckyBuys(0);
 
         assertEq(id, 0, "Commit ID should be 0");
@@ -79,7 +89,7 @@ contract TestLuckyBuyCommit is Test {
         assertEq(storedCounter, 0, "Counter should be 0");
         assertEq(storedOrderHash, orderHash, "Order hash should match");
         assertEq(storedAmount, amount, "Amount should match");
-
+        assertEq(storedReward, reward, "Reward should match");
         vm.stopPrank();
     }
 
@@ -87,7 +97,13 @@ contract TestLuckyBuyCommit is Test {
         vm.startPrank(user);
         vm.deal(user, amount * 2);
 
-        luckyBuy.commit{value: amount}(receiver, cosigner, seed, orderHash);
+        luckyBuy.commit{value: amount}(
+            receiver,
+            cosigner,
+            seed,
+            orderHash,
+            reward
+        );
 
         assertEq(
             luckyBuy.luckyBuyCount(receiver),
@@ -99,7 +115,8 @@ contract TestLuckyBuyCommit is Test {
             receiver,
             cosigner,
             seed + 1,
-            "secondOrderHash"
+            "secondOrderHash",
+            reward
         );
 
         assertEq(
@@ -115,7 +132,8 @@ contract TestLuckyBuyCommit is Test {
             uint256 storedSeed,
             uint256 storedCounter,
             string memory storedOrderHash,
-            uint256 storedAmount
+            uint256 storedAmount,
+            uint256 storedReward
         ) = luckyBuy.luckyBuys(1);
 
         assertEq(id, 1, "Second commit ID should be 1");
@@ -125,7 +143,7 @@ contract TestLuckyBuyCommit is Test {
         assertEq(storedCounter, 1, "Counter should be 1 for second commit");
         assertEq(storedOrderHash, "secondOrderHash", "Order hash should match");
         assertEq(storedAmount, amount, "Amount should match");
-
+        assertEq(storedReward, reward, "Reward should match");
         vm.stopPrank();
     }
 
@@ -133,7 +151,7 @@ contract TestLuckyBuyCommit is Test {
         vm.startPrank(user);
 
         vm.expectRevert(LuckyBuy.InvalidAmount.selector);
-        luckyBuy.commit{value: 0}(receiver, cosigner, seed, orderHash);
+        luckyBuy.commit{value: 0}(receiver, cosigner, seed, orderHash, reward);
 
         vm.stopPrank();
     }
@@ -149,7 +167,8 @@ contract TestLuckyBuyCommit is Test {
             receiver,
             invalidCosigner,
             seed,
-            orderHash
+            orderHash,
+            reward
         );
 
         vm.stopPrank();
@@ -160,7 +179,13 @@ contract TestLuckyBuyCommit is Test {
         vm.deal(user, amount);
 
         vm.expectRevert(LuckyBuy.InvalidReceiver.selector);
-        luckyBuy.commit{value: amount}(address(0), cosigner, seed, orderHash);
+        luckyBuy.commit{value: amount}(
+            address(0),
+            cosigner,
+            seed,
+            orderHash,
+            reward
+        );
 
         vm.stopPrank();
     }
@@ -174,7 +199,13 @@ contract TestLuckyBuyCommit is Test {
         vm.deal(user, amount);
 
         vm.expectRevert(LuckyBuy.InvalidCoSigner.selector);
-        luckyBuy.commit{value: amount}(receiver, cosigner, seed, orderHash);
+        luckyBuy.commit{value: amount}(
+            receiver,
+            cosigner,
+            seed,
+            orderHash,
+            reward
+        );
 
         vm.stopPrank();
     }
@@ -184,7 +215,13 @@ contract TestLuckyBuyCommit is Test {
 
         vm.startPrank(user);
         vm.deal(user, amount);
-        luckyBuy.commit{value: amount}(receiver, cosigner, seed, orderHash);
+        luckyBuy.commit{value: amount}(
+            receiver,
+            cosigner,
+            seed,
+            orderHash,
+            reward
+        );
         vm.stopPrank();
 
         vm.startPrank(user2);
@@ -193,7 +230,8 @@ contract TestLuckyBuyCommit is Test {
             receiver,
             cosigner,
             seed + 1,
-            "user2OrderHash"
+            "user2OrderHash",
+            reward
         );
         vm.stopPrank();
         assertEq(
@@ -209,7 +247,8 @@ contract TestLuckyBuyCommit is Test {
             ,
             ,
             string memory orderHash1,
-            uint256 amount1
+            uint256 amount1,
+            uint256 reward1
         ) = luckyBuy.luckyBuys(0);
 
         (
@@ -219,7 +258,8 @@ contract TestLuckyBuyCommit is Test {
             ,
             ,
             string memory orderHash2,
-            uint256 amount2
+            uint256 amount2,
+            uint256 reward2
         ) = luckyBuy.luckyBuys(1);
 
         assertEq(id1, 0, "First commit ID should be 0");
@@ -234,6 +274,8 @@ contract TestLuckyBuyCommit is Test {
         );
         assertEq(amount1, amount, "First amount should match");
         assertEq(amount2, amount, "Second amount should match");
+        assertEq(reward1, reward, "First reward should match");
+        assertEq(reward2, reward, "Second reward should match");
     }
 
     function testCommitToDifferentReceivers() public {
@@ -242,13 +284,20 @@ contract TestLuckyBuyCommit is Test {
         vm.startPrank(user);
         vm.deal(user, amount * 2);
 
-        luckyBuy.commit{value: amount}(receiver, cosigner, seed, orderHash);
+        luckyBuy.commit{value: amount}(
+            receiver,
+            cosigner,
+            seed,
+            orderHash,
+            reward
+        );
 
         luckyBuy.commit{value: amount}(
             receiver2,
             cosigner,
             seed + 1,
-            "receiver2OrderHash"
+            "receiver2OrderHash",
+            reward
         );
 
         assertEq(
@@ -262,11 +311,27 @@ contract TestLuckyBuyCommit is Test {
             "Second receiver counter should be 1"
         );
 
-        (, address storedReceiver1, , , uint256 storedCounter1, , ) = luckyBuy
-            .luckyBuys(0);
+        (
+            ,
+            address storedReceiver1,
+            ,
+            ,
+            uint256 storedCounter1,
+            ,
+            ,
+            uint256 storedReward1
+        ) = luckyBuy.luckyBuys(0);
 
-        (, address storedReceiver2, , , uint256 storedCounter2, , ) = luckyBuy
-            .luckyBuys(1);
+        (
+            ,
+            address storedReceiver2,
+            ,
+            ,
+            uint256 storedCounter2,
+            ,
+            ,
+            uint256 storedReward2
+        ) = luckyBuy.luckyBuys(1);
 
         assertEq(
             storedReceiver1,
@@ -280,6 +345,8 @@ contract TestLuckyBuyCommit is Test {
         );
         assertEq(storedCounter1, 0, "First receiver counter should be 0");
         assertEq(storedCounter2, 0, "Second receiver counter should be 0");
+        assertEq(storedReward1, reward, "First reward should match");
+        assertEq(storedReward2, reward, "Second reward should match");
 
         vm.stopPrank();
     }
@@ -295,22 +362,28 @@ contract TestLuckyBuyCommit is Test {
             receiver,
             cosigner,
             seed,
-            "smallAmount"
+            "smallAmount",
+            reward
         );
 
         luckyBuy.commit{value: amount2}(
             receiver,
             cosigner,
             seed + 1,
-            "largeAmount"
+            "largeAmount",
+            reward
         );
 
-        (, , , , , , uint256 storedAmount1) = luckyBuy.luckyBuys(0);
+        (, , , , , , uint256 storedAmount1, uint256 storedReward1) = luckyBuy
+            .luckyBuys(0);
 
-        (, , , , , , uint256 storedAmount2) = luckyBuy.luckyBuys(1);
+        (, , , , , , uint256 storedAmount2, uint256 storedReward2) = luckyBuy
+            .luckyBuys(1);
 
         assertEq(storedAmount1, amount1, "First stored amount should match");
         assertEq(storedAmount2, amount2, "Second stored amount should match");
+        assertEq(storedReward1, reward, "First stored reward should match");
+        assertEq(storedReward2, reward, "Second stored reward should match");
 
         vm.stopPrank();
     }
@@ -324,7 +397,8 @@ contract TestLuckyBuyCommit is Test {
                 receiver,
                 cosigner,
                 seed + i,
-                string(abi.encodePacked("orderHash", i))
+                string(abi.encodePacked("orderHash", i)),
+                reward
             );
 
             assertEq(
@@ -333,9 +407,11 @@ contract TestLuckyBuyCommit is Test {
                 "Receiver counter should increment correctly"
             );
 
-            (, , , , uint256 storedCounter, , ) = luckyBuy.luckyBuys(i);
+            (, , , , uint256 storedCounter, , , uint256 storedReward) = luckyBuy
+                .luckyBuys(i);
 
             assertEq(storedCounter, i, "Stored counter should match index");
+            assertEq(storedReward, reward, "Stored reward should match");
         }
 
         vm.stopPrank();

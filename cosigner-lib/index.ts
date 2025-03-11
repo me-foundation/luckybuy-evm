@@ -16,6 +16,8 @@ interface CommitData {
   seed: bigint;
   counter: bigint;
   orderHash: string;
+  amount: bigint;
+  reward: bigint;
 }
 
 export class MagicSigner {
@@ -55,7 +57,9 @@ export class MagicSigner {
     cosigner: string,
     seed: bigint,
     counter: bigint,
-    orderHash: string
+    orderHash: string,
+    amount: bigint,
+    reward: bigint
   ): Promise<{
     commit: CommitData;
     callData: string;
@@ -76,6 +80,8 @@ export class MagicSigner {
         { name: "seed", type: "uint256" },
         { name: "counter", type: "uint256" },
         { name: "orderHash", type: "string" },
+        { name: "amount", type: "uint256" },
+        { name: "reward", type: "uint256" },
       ],
     };
 
@@ -86,6 +92,8 @@ export class MagicSigner {
       seed,
       counter,
       orderHash,
+      amount,
+      reward,
     };
 
     const signature = await this.signer.signTypedData(domain, types, commit);
@@ -97,7 +105,9 @@ export class MagicSigner {
       cosigner,
       seed,
       counter,
-      orderHash
+      orderHash,
+      amount,
+      reward
     );
 
     return {
@@ -114,7 +124,9 @@ export class MagicSigner {
     cosigner: string,
     seed: bigint,
     counter: bigint,
-    orderHash: string
+    orderHash: string,
+    amount: bigint,
+    reward: bigint
   ) {
     const structData = {
       id,
@@ -123,6 +135,8 @@ export class MagicSigner {
       seed,
       counter,
       orderHash,
+      amount,
+      reward,
     };
 
     // Define the types for encoding
@@ -133,6 +147,8 @@ export class MagicSigner {
       "uint256", // seed
       "uint256", // counter
       "string", // orderHash
+      "uint256", // amount
+      "uint256", // reward
     ];
 
     // Encode the parameters
@@ -143,6 +159,8 @@ export class MagicSigner {
       structData.seed,
       structData.counter,
       structData.orderHash,
+      structData.amount,
+      structData.reward,
     ]);
 
     return encodedData;

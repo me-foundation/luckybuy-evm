@@ -30,14 +30,16 @@ contract SignatureVerifier is ISignatureVerifier, EIP712 {
                 keccak256(
                     abi.encode(
                         keccak256(
-                            "CommitData(uint256 id,address receiver,address cosigner,uint256 seed,uint256 counter,string orderHash)"
+                            "CommitData(uint256 id,address receiver,address cosigner,uint256 seed,uint256 counter,string orderHash,uint256 amount,uint256 reward)"
                         ),
                         commit.id,
                         commit.receiver,
                         commit.cosigner,
                         commit.seed,
                         commit.counter,
-                        commit.orderHash
+                        commit.orderHash,
+                        commit.amount,
+                        commit.reward
                     )
                 )
             );

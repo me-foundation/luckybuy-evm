@@ -29,6 +29,7 @@ contract LuckyBuy is
         uint256 counter,
         string orderHash,
         uint256 amount,
+        uint256 reward,
         bytes32 hash
     );
     event CoSignerAdded(address indexed cosigner);
@@ -49,11 +50,15 @@ contract LuckyBuy is
         address receiver_,
         address cosigner_,
         uint256 seed_,
-        string calldata orderHash_
+        string calldata orderHash_,
+        uint256 reward_
     ) external payable {
         if (msg.value == 0) revert InvalidAmount();
         if (!isCosigner[cosigner_]) revert InvalidCoSigner();
         if (receiver_ == address(0)) revert InvalidReceiver();
+
+        // Calc odds, check if odds in range
+        // Check if reward is below max bet
 
         uint256 commitId = luckyBuys.length;
         uint256 userCounter = luckyBuyCount[receiver_]++;
@@ -65,7 +70,8 @@ contract LuckyBuy is
             seed: seed_,
             counter: userCounter,
             orderHash: orderHash_,
-            amount: msg.value
+            amount: msg.value,
+            reward: reward_
         });
 
         luckyBuys.push(commitData);
@@ -79,6 +85,7 @@ contract LuckyBuy is
             userCounter,
             orderHash_, // Relay tx properties: to, data, value
             msg.value,
+            reward_,
             hash(commitData) // verify above values offchain with this hash
         );
     }
