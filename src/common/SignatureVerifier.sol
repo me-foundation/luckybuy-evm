@@ -17,14 +17,14 @@ contract SignatureVerifier is ISignatureVerifier, EIP712 {
     /// @notice Hashes a commit
     /// @param commit Commit to hash
     /// @return Hash of the commit
-    function hash(CommitData calldata commit) public view returns (bytes32) {
+    function hash(CommitData memory commit) public view returns (bytes32) {
         return _hash(commit);
     }
 
     /// @dev Internal function to hash a commit
     /// @param commit Commit to hash
     /// @return Hash of the commit
-    function _hash(CommitData calldata commit) internal view returns (bytes32) {
+    function _hash(CommitData memory commit) internal view returns (bytes32) {
         return
             _hashTypedDataV4(
                 keccak256(
@@ -63,17 +63,6 @@ contract SignatureVerifier is ISignatureVerifier, EIP712 {
         bytes memory signature
     ) internal view returns (address) {
         bytes32 digest = _hash(commit);
-        return ECDSA.recover(digest, signature);
-    }
-
-    /// @dev Internal function to verify a commit
-    /// @param digest Digest to verify
-    /// @param signature Signature to verify
-    /// @return Address of the signer
-    function debugVerify(
-        bytes32 digest,
-        bytes memory signature
-    ) public view returns (address) {
         return ECDSA.recover(digest, signature);
     }
 }

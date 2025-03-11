@@ -25,7 +25,8 @@ contract TestSignatureVerifier is Test {
             cosigner: cosignerAddress,
             seed: 1,
             counter: 1,
-            orderHash: "0x0"
+            orderHash: "0x0",
+            amount: 100
         });
 
         console.log("Commit data:");

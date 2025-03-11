@@ -10,6 +10,7 @@ interface ISignatureVerifier {
         uint256 seed;
         uint256 counter;
         string orderHash;
+        uint256 amount;
     }
 
     function hash(
