@@ -32,17 +32,17 @@ contract TestSignaturePRNG is Test {
         sampleSignatureIdentical = hex"09a0f1a38d41262e87c6bfc526c9a415b94ca4126e6cecba371a0efacf3db47c4ec97521c9ccc9396dcdf8e664ea57d04a1caa956c53180e2330b61908bacff61b";
     }
 
-    function testRNGOut() public {
-        for (uint256 i = 0; i < 1000; i++) {
-            bytes memory signature = abi.encodePacked(i);
-            uint32 result = prng.exposed_rng(signature);
-            console.log(result);
-        }
-    }
+    //function testRNGOut() public {
+    //    for (uint256 i = 0; i < 1000; i++) {
+    //        bytes memory signature = abi.encodePacked(i);
+    //        uint32 result = prng.exposed_rng(signature);
+    //        console.log(result);
+    //    }
+    //}
 
-    function testRNGOutToFile() public {
-        _generateRNGValues(100000, OUTPUT_100K);
-    }
+    //function testRNGOutToFile() public {
+    //    _generateRNGValues(100000, OUTPUT_100K);
+    //}
 
     function _generateRNGValues(
         uint256 count,
