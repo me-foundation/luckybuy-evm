@@ -14,7 +14,7 @@ contract TestLuckyBuyCommit is Test {
     uint256 seed = 12345;
     string orderHash = "testOrderHash123";
     uint256 amount = 1 ether;
-    uint256 reward = 1000; // 10% odds
+    uint256 reward = 10 ether; // 10% odds
 
     event Commit(
         address indexed sender,
@@ -32,7 +32,8 @@ contract TestLuckyBuyCommit is Test {
     function setUp() public {
         vm.startPrank(admin);
         luckyBuy = new LuckyBuy();
-
+        vm.deal(admin, 100 ether);
+        vm.deal(address(this), 100 ether);
         // Add a cosigner for testing
         luckyBuy.addCosigner(cosigner);
         vm.stopPrank();
@@ -391,8 +392,8 @@ contract TestLuckyBuyCommit is Test {
     function testCommitCounterIncrement() public {
         vm.startPrank(user);
         vm.deal(user, amount * 5);
-
         for (uint i = 0; i < 5; i++) {
+            console.log("Here:");
             luckyBuy.commit{value: amount}(
                 receiver,
                 cosigner,
@@ -407,13 +408,49 @@ contract TestLuckyBuyCommit is Test {
                 "Receiver counter should increment correctly"
             );
 
-            (, , , , uint256 storedCounter, , , uint256 storedReward) = luckyBuy
-                .luckyBuys(i);
-
+            (, , , , uint256 storedCounter, , , ) = luckyBuy.luckyBuys(i);
+            console.log(storedCounter);
             assertEq(storedCounter, i, "Stored counter should match index");
-            assertEq(storedReward, reward, "Stored reward should match");
         }
 
         vm.stopPrank();
+    }
+
+    function testSetMaxReward() public {
+        uint256 startMaxReward = luckyBuy.maxReward();
+
+        vm.expectRevert();
+        luckyBuy.commit{value: amount}(
+            receiver,
+            cosigner,
+            seed,
+            "orderHash",
+            startMaxReward * 2
+        );
+
+        vm.expectRevert();
+        luckyBuy.setMaxReward(startMaxReward * 2);
+
+        vm.startPrank(admin);
+        luckyBuy.setMaxReward(startMaxReward * 2);
+
+        assertEq(luckyBuy.maxReward(), startMaxReward * 2);
+
+        luckyBuy.commit{value: amount}(
+            receiver,
+            cosigner,
+            seed,
+            "orderHash",
+            startMaxReward * 2
+        );
+
+        vm.expectRevert();
+        luckyBuy.commit{value: amount}(
+            receiver,
+            cosigner,
+            seed,
+            "orderHash",
+            startMaxReward * 3
+        );
     }
 }

@@ -108,6 +108,12 @@ contract LuckyBuy is
         emit CoSignerRemoved(cosigner_);
     }
 
+    function setMaxReward(
+        uint256 maxReward_
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        maxReward = maxReward_;
+    }
+
     function _depositTreasury(uint256 amount) internal {
         balance += amount;
     }
