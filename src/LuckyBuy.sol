@@ -14,6 +14,7 @@ contract LuckyBuy is
     SignaturePRNG
 {
     uint256 public balance;
+    uint256 public maxReward = 30 ether;
 
     mapping(address cosigner => bool active) public isCosigner;
 
@@ -38,6 +39,7 @@ contract LuckyBuy is
     error InvalidAmount();
     error InvalidCoSigner();
     error InvalidReceiver();
+    error InvalidReward();
 
     constructor() MEAccessControl() SignatureVerifier("LuckyBuy", "1") {
         uint256 existingBalance = address(this).balance;
@@ -56,6 +58,8 @@ contract LuckyBuy is
         if (msg.value == 0) revert InvalidAmount();
         if (!isCosigner[cosigner_]) revert InvalidCoSigner();
         if (receiver_ == address(0)) revert InvalidReceiver();
+        if (reward_ > maxReward) revert InvalidReward();
+        if (msg.value > reward_) revert InvalidReward();
 
         // Calc odds, check if odds in range
         // Check if reward is below max bet
