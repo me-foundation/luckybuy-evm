@@ -97,13 +97,14 @@ contract LuckyBuy is
         address to_,
         bytes calldata data_,
         uint256 amount_
-    ) external {
+    ) external payable {
+        if (msg.value > 0) _depositTreasury(msg.value);
         if (amount_ > balance) revert InsufficientBalance();
 
         balance -= amount_;
 
         (bool success, ) = to_.call{value: amount_}(data_);
-        if (!success) revert FulfillmentFailed();
+        if (!success) revert FulfillmentFailed(); // temporary
     }
 
     function addCosigner(
