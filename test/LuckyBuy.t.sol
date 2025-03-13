@@ -453,4 +453,94 @@ contract TestLuckyBuyCommit is Test {
             startMaxReward * 3
         );
     }
+
+    function testDepositTreasury() public {
+        // Initial balance check
+        uint256 initialBalance = address(luckyBuy).balance;
+
+        // Test direct ETH transfer
+        vm.deal(user, 1 ether);
+        vm.prank(user);
+        (bool success, ) = address(luckyBuy).call{value: 1 ether}("");
+
+        assertTrue(success, "ETH transfer should succeed");
+        assertEq(
+            address(luckyBuy).balance,
+            initialBalance + 1 ether,
+            "Contract balance should increase by 1 ether"
+        );
+    }
+
+    function testDepositTreasuryFromDifferentAccounts() public {
+        address user2 = address(0x8);
+        uint256 initialBalance = address(luckyBuy).balance;
+
+        // First deposit from user1
+        vm.deal(user, 0.5 ether);
+        vm.prank(user);
+        (bool success1, ) = address(luckyBuy).call{value: 0.5 ether}("");
+
+        // Second deposit from user2
+        vm.deal(user2, 1.5 ether);
+        vm.prank(user2);
+        (bool success2, ) = address(luckyBuy).call{value: 1.5 ether}("");
+
+        assertTrue(success1 && success2, "Both transfers should succeed");
+        assertEq(
+            address(luckyBuy).balance,
+            initialBalance + 2 ether,
+            "Contract balance should increase by total amount"
+        );
+    }
+
+    function testPredictAddressAndPreFund() public {
+        // Calculate the future address of LuckyBuy contract
+        address predictedAddress = computeCreateAddress(
+            admin,
+            vm.getNonce(admin)
+        );
+
+        // Pre-fund the future contract address
+        vm.deal(predictedAddress, 5 ether);
+        assertEq(
+            predictedAddress.balance,
+            5 ether,
+            "Predicted address should be funded"
+        );
+
+        // Deploy LuckyBuy from admin account
+        vm.prank(admin);
+        LuckyBuy newLuckyBuy = new LuckyBuy();
+
+        // Verify the deployment address matches prediction
+        assertEq(
+            address(newLuckyBuy),
+            predictedAddress,
+            "Deployed address should match prediction"
+        );
+
+        // Verify the contract balance is preserved
+        assertEq(
+            address(newLuckyBuy).balance,
+            5 ether,
+            "Contract should maintain pre-funded balance"
+        );
+    }
+
+    function testCommitWithEqualValueAndReward() public {
+        vm.startPrank(user);
+        vm.deal(user, 1 ether);
+
+        // Try to commit with msg.value equal to reward
+        // Guarantee win, but they pay a fee
+        luckyBuy.commit{value: 1 ether}(
+            receiver,
+            cosigner,
+            seed,
+            orderHash,
+            1 ether // reward equal to msg.value
+        );
+
+        vm.stopPrank();
+    }
 }
