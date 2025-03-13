@@ -8,7 +8,9 @@
     "test": "test"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "forge build",
+    "test": "forge test",
+    "coverage": "forge coverage --report lcov && genhtml lcov.info --branch-coverage --output-dir coverage --ignore-errors inconsistent,mismatch,category"
   },
   "author": "",
   "license": "ISC",
