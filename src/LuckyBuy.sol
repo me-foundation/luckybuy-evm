@@ -36,10 +36,12 @@ contract LuckyBuy is
     event CoSignerAdded(address indexed cosigner);
     event CoSignerRemoved(address indexed cosigner);
 
+    error InsufficientBalance();
     error InvalidAmount();
     error InvalidCoSigner();
     error InvalidReceiver();
     error InvalidReward();
+    error FulfillmentFailed();
 
     constructor() MEAccessControl() SignatureVerifier("LuckyBuy", "1") {
         uint256 existingBalance = address(this).balance;
@@ -60,9 +62,6 @@ contract LuckyBuy is
         if (receiver_ == address(0)) revert InvalidReceiver();
         if (reward_ > maxReward) revert InvalidReward();
         if (msg.value > reward_) revert InvalidReward();
-
-        // Calc odds, check if odds in range
-        // Check if reward is below max bet
 
         uint256 commitId = luckyBuys.length;
         uint256 userCounter = luckyBuyCount[receiver_]++;
@@ -92,6 +91,19 @@ contract LuckyBuy is
             reward_,
             hash(commitData) // verify above values offchain with this hash
         );
+    }
+
+    function fulfill(
+        address to_,
+        bytes calldata data_,
+        uint256 amount_
+    ) external {
+        if (amount_ > balance) revert InsufficientBalance();
+
+        balance -= amount_;
+
+        (bool success, ) = to_.call{value: amount_}(data_);
+        if (!success) revert FulfillmentFailed();
     }
 
     function addCosigner(
