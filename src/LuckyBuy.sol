@@ -94,16 +94,21 @@ contract LuckyBuy is
     }
 
     function fulfill(
-        address to_,
+        uint256 commitId_,
+        address txTo_,
         bytes calldata data_,
-        uint256 amount_
+        uint256 amount_,
+        address token_,
+        uint256 tokenId_
     ) external payable {
         if (msg.value > 0) _depositTreasury(msg.value);
         if (amount_ > balance) revert InsufficientBalance();
 
+        // Check win conditions
+
         balance -= amount_;
 
-        (bool success, ) = to_.call{value: amount_}(data_);
+        (bool success, ) = txTo_.call{value: amount_}(data_);
         if (!success) revert FulfillmentFailed(); // temporary
     }
 

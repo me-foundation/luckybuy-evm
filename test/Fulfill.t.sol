@@ -86,6 +86,13 @@ contract FulfillTest is Test {
 
         (bool success, ) = address(luckyBuy).call{value: 10 ether}("");
 
-        luckyBuy.fulfill(TARGET, data, TX_VALUE);
+        luckyBuy.fulfill(
+            0,
+            TARGET,
+            data,
+            TX_VALUE,
+            0xE052c9CFe22B5974DC821cBa907F1DAaC7979c94,
+            1
+        );
     }
 }

@@ -20,6 +20,14 @@ interface CommitData {
   reward: bigint;
 }
 
+interface OrderHashData {
+  to: string;
+  value: bigint;
+  data: string;
+  token: string;
+  tokenId: bigint;
+}
+
 export class MagicSigner {
   public contract: string;
   public signer: ethers.Wallet;
@@ -164,6 +172,21 @@ export class MagicSigner {
     ]);
 
     return encodedData;
+  }
+
+  async hashOrder(
+    to: string,
+    data: string,
+    value: bigint,
+    token: string,
+    tokenId: bigint
+  ) {
+    return ethers.keccak256(
+      ethers.AbiCoder.defaultAbiCoder().encode(
+        ["address", "string", "uint256", "address", "uint256"],
+        [to, data, value, token, tokenId]
+      )
+    );
   }
 }
 

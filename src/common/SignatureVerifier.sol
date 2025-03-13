@@ -14,6 +14,26 @@ contract SignatureVerifier is ISignatureVerifier, EIP712 {
         string memory version
     ) EIP712(name, version) {}
 
+    function hashOrder(
+        address txTo_,
+        string memory data_,
+        uint256 amount_,
+        address token_,
+        uint256 tokenId_
+    ) public view returns (bytes32) {
+        return _hashOrder(txTo_, data_, amount_, token_, tokenId_);
+    }
+
+    function _hashOrder(
+        address txTo_,
+        string memory data_,
+        uint256 amount_,
+        address token_,
+        uint256 tokenId_
+    ) internal view returns (bytes32) {
+        return keccak256(abi.encode(txTo_, data_, amount_, token_, tokenId_));
+    }
+
     /// @notice Hashes a commit
     /// @param commit Commit to hash
     /// @return Hash of the commit
