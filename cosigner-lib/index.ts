@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 
-const SIGNING_DOMAIN_NAME = "MagicSigner";
+const SIGNING_DOMAIN_NAME = "LuckyBuy";
 const SIGNING_DOMAIN_VERSION = "1";
 
 interface CommitParams {
@@ -79,7 +79,7 @@ export class MagicSigner {
         { name: "cosigner", type: "address" },
         { name: "seed", type: "uint256" },
         { name: "counter", type: "uint256" },
-        { name: "orderHash", type: "string" },
+        { name: "orderHash", type: "bytes32" },
         { name: "amount", type: "uint256" },
         { name: "reward", type: "uint256" },
       ],
@@ -146,7 +146,7 @@ export class MagicSigner {
       "address", // cosigner
       "uint256", // seed
       "uint256", // counter
-      "string", // orderHash
+      "bytes32", // orderHash
       "uint256", // amount
       "uint256", // reward
     ];

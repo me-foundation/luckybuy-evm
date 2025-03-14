@@ -26,6 +26,17 @@ contract MockLuckyBuy is LuckyBuy {
     ) public returns (bool success) {
         (success, ) = txTo_.call{value: amount_}(data_);
     }
+
+    function hashLuckyBuy(uint256 id) public view returns (bytes32) {
+        return _hash(luckyBuys[id]);
+    }
+
+    function mockRecover(
+        bytes32 digest,
+        bytes memory signature
+    ) public view returns (address) {
+        return ECDSA.recover(digest, signature);
+    }
 }
 contract FulfillTest is Test {
     MockLuckyBuy luckyBuy;
@@ -33,7 +44,9 @@ contract FulfillTest is Test {
 
     address cosigner = 0xE052c9CFe22B5974DC821cBa907F1DAaC7979c94;
     bytes signature =
-        hex"6e770e2253444563387afd1d832f07704ca9bdef17e46763219a2680f77c3f530ae8541e17eea7601b981b3f50711b980e534d0226ef8a53fea579993be6d1241b";
+        hex"4ed755932da674461316c49100a150938001dc43c76a30885b11e8c1c8a5560e5a2c474987025d94a8309b0301692ffdc237891dfec12a55048549b2013170b31b";
+    bytes32 digest =
+        hex"3b7e2efa9461d0fdf393718720ac47561bb8e539e4a2b9c47e9a54325a31ce4e";
     // The target block number from the comment
     uint256 constant FORK_BLOCK = 22035010;
 
@@ -158,15 +171,15 @@ contract FulfillTest is Test {
         // User submits the commit data from the back end with their payment to the contract
         vm.expectEmit(true, true, true, false);
         emit Commit(
-            RECEIVER, // who sent the tx
-            0, // First commit ID should be 0
-            RECEIVER, // who is receiving the NFT
-            cosigner, // who is cosigning the commit
-            seed, // random number
-            0, // First counter for this receiver should be 0
-            orderHash, // the hash of the order data
-            COMMIT_AMOUNT, // the amount of ETH sent to the contract
-            REWARD // the reward for the lucky buyer (cost of the nft)
+            RECEIVER, // indexed sender
+            0, // indexed commitId (first commit, so ID is 0)
+            RECEIVER, // indexed receiver
+            cosigner, // cosigner
+            seed, // seed (12345)
+            0, // counter (first commit, so counter is 0)
+            orderHash, // orderHash
+            COMMIT_AMOUNT, // amount
+            REWARD // reward
         );
         vm.prank(RECEIVER);
         luckyBuy.commit{value: COMMIT_AMOUNT}(
@@ -178,14 +191,32 @@ contract FulfillTest is Test {
         );
 
         // Backend sees the event, it performs its own validation of the event and then signs valid commits. It broadcasts the fulfillment tx.
-        // id: bigint,
-        // receiver: string,
-        // cosigner: string,
-        // seed: bigint,
-        // counter: bigint,
-        // orderHash: string,
-        // amount: bigint,
-        // reward: bigint
+
+        // console.log to confirm with typescript
+        (
+            uint256 id,
+            address storedReceiver,
+            address storedCosigner,
+            uint256 storedSeed,
+            uint256 storedCounter,
+            bytes32 storedOrderHash,
+            uint256 storedAmount,
+            uint256 storedReward
+        ) = luckyBuy.luckyBuys(0);
+
+        console.log(id);
+        console.log(storedReceiver);
+        console.log(storedCosigner);
+        console.log(storedSeed);
+        console.log(storedCounter);
+        console.logBytes32(storedOrderHash);
+        console.log(storedAmount);
+        console.log(storedReward);
+
+        console.logBytes32(luckyBuy.hashLuckyBuy(0));
+        console.log(address(luckyBuy));
+        console.log(luckyBuy.mockRecover(digest, signature));
+        console.log(luckyBuy.mockRecover(luckyBuy.hashLuckyBuy(0), signature));
     }
 
     function testhashDataView() public {
