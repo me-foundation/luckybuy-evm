@@ -15,8 +15,20 @@ import "src/LuckyBuy.sol";
 //   -H 'priority: u=1, i' \
 //   -H 'referer: https://magiceden.us/' \
 //   --data-raw '{"items":[{"key":"0x415a82e77642113701fe190554fddd7701c3b262:8295","token":"0x415a82e77642113701fe190554fddd7701c3b262:8295","is1155":false,"source":"opensea.io","fillType":"trade","quantity":1}],"taker":"0x522B3294E6d06aA25Ad0f1B8891242E335D3B459","source":"magiceden.us","partial":true,"currency":"0x0000000000000000000000000000000000000000","currencyChainId":1,"forwarderChannel":"0x5ebc127fae83ed5bdd91fc6a5f5767E259dF5642","maxFeePerGas":"100000000000","maxPriorityFeePerGas":"100000000000","normalizeRoyalties":false}'
+
+contract MockLuckyBuy is LuckyBuy {
+    constructor() LuckyBuy() {}
+
+    function fulfillOrder(
+        address txTo_,
+        bytes calldata data_,
+        uint256 amount_
+    ) public returns (bool success) {
+        (success, ) = txTo_.call{value: amount_}(data_);
+    }
+}
 contract FulfillTest is Test {
-    LuckyBuy luckyBuy;
+    MockLuckyBuy luckyBuy;
     address admin = address(0x1);
     address user = address(0x2);
     address receiver = address(0x3);
@@ -50,7 +62,7 @@ contract FulfillTest is Test {
             shouldRunTests = true;
 
             vm.startPrank(admin);
-            luckyBuy = new LuckyBuy();
+            luckyBuy = new MockLuckyBuy();
             vm.deal(admin, 100 ether);
             vm.deal(address(this), 100 ether);
             // Add a cosigner for testing
@@ -95,7 +107,9 @@ contract FulfillTest is Test {
         // deposit treasury
         (bool success, ) = address(luckyBuy).call{value: 10 ether}("");
 
-        luckyBuy.fulfill(0, TARGET, data, TX_VALUE, TOKEN, TOKEN_ID, signature);
+        assertEq(success, true);
+
+        luckyBuy.fulfillOrder(TARGET, data, TX_VALUE);
 
         assertEq(nft.ownerOf(TOKEN_ID), address(luckyBuy));
     }
