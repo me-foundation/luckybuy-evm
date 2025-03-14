@@ -50,8 +50,8 @@ contract FulfillTest is Test {
     address constant TARGET = 0x0000000000000068F116a894984e2DB1123eB395; // Seaport
     address constant TOKEN = 0x415A82E77642113701FE190554fDDD7701c3B262;
     uint256 constant TOKEN_ID = 8295;
-    uint256 constant TX_VALUE = 20000000000000 wei;
-    uint256 constant COMMIT_AMOUNT = TX_VALUE / 100; // 1%
+    uint256 constant REWARD = 20000000000000 wei;
+    uint256 constant COMMIT_AMOUNT = REWARD / 100; // 1%
 
     IERC721 nft = IERC721(TOKEN);
 
@@ -100,7 +100,7 @@ contract FulfillTest is Test {
         }
 
         // Send the transaction
-        (bool success, ) = TARGET.call{value: TX_VALUE}(DATA);
+        (bool success, ) = TARGET.call{value: REWARD}(DATA);
 
         // Verify the transaction was successful
         assertTrue(success, "Transaction failed");
@@ -109,7 +109,7 @@ contract FulfillTest is Test {
         console.log("Target:", TARGET);
         console.log("Token:", TOKEN);
         console.log("Token ID:", TOKEN_ID);
-        console.log("TX Value:", TX_VALUE);
+        console.log("TX Value:", REWARD);
 
         console.log(address(luckyBuy));
 
@@ -127,7 +127,7 @@ contract FulfillTest is Test {
 
         assertEq(success, true);
 
-        luckyBuy.fulfillOrder(TARGET, DATA, TX_VALUE);
+        luckyBuy.fulfillOrder(TARGET, DATA, REWARD);
 
         assertEq(nft.ownerOf(TOKEN_ID), RECEIVER);
     }
@@ -140,12 +140,12 @@ contract FulfillTest is Test {
         }
 
         // The user selects a token and amount to pay from our API.
-        // This gives us TARGET, TX_VALUE, DATA, TOKEN, TOKEN_ID
+        // This gives us TARGET, REWARD, DATA, TOKEN, TOKEN_ID
         // Typescript will hash to: 0x00b839f580603f650be760ccd549d9ddbb877aa80ccf709f00f1950f51c35a99
 
         bytes32 orderHash = luckyBuy.hashOrder(
             TARGET,
-            TX_VALUE,
+            REWARD,
             DATA,
             TOKEN,
             TOKEN_ID
@@ -156,11 +156,7 @@ contract FulfillTest is Test {
         // backend builds the commit data off chain. The user should technically choose the cosigner or we could be accused of trying random cosigners until we find one that benefits us.
         uint256 seed = 12345; // User provides this data
 
-        vm.prank(user);
-        luckyBuy.commit(RECEIVER, cosigner, seed, orderHash, TX_VALUE);
-
-        // Backend sees the event
-
+        // User submits the commit data from the back end with their payment to the contract
         vm.expectEmit(true, true, true, false);
         emit Commit(
             user,
@@ -171,14 +167,25 @@ contract FulfillTest is Test {
             0, // First counter for this receiver should be 0
             orderHash,
             COMMIT_AMOUNT,
-            TX_VALUE
+            REWARD
         );
+        vm.prank(user);
+        luckyBuy.commit{value: COMMIT_AMOUNT}(
+            RECEIVER,
+            cosigner,
+            seed,
+            orderHash,
+            REWARD
+        );
+
+        // Backend sees the event
+
         // User submits the commit data and signature to the contract
     }
 
     function testhashDataView() public {
         console.logBytes32(
-            luckyBuy.hashOrder(TARGET, TX_VALUE, DATA, TOKEN, TOKEN_ID)
+            luckyBuy.hashOrder(TARGET, REWARD, DATA, TOKEN, TOKEN_ID)
         );
     }
 }
