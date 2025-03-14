@@ -30,8 +30,7 @@ contract MockLuckyBuy is LuckyBuy {
 contract FulfillTest is Test {
     MockLuckyBuy luckyBuy;
     address admin = address(0x1);
-    address user = address(0x2);
-    address receiver = address(0x3);
+
     address cosigner = 0xE052c9CFe22B5974DC821cBa907F1DAaC7979c94;
     bytes signature =
         hex"6e770e2253444563387afd1d832f07704ca9bdef17e46763219a2680f77c3f530ae8541e17eea7601b981b3f50711b980e534d0226ef8a53fea579993be6d1241b";
@@ -159,17 +158,17 @@ contract FulfillTest is Test {
         // User submits the commit data from the back end with their payment to the contract
         vm.expectEmit(true, true, true, false);
         emit Commit(
-            user,
+            RECEIVER, // who sent the tx
             0, // First commit ID should be 0
-            RECEIVER,
-            cosigner,
-            seed,
+            RECEIVER, // who is receiving the NFT
+            cosigner, // who is cosigning the commit
+            seed, // random number
             0, // First counter for this receiver should be 0
-            orderHash,
-            COMMIT_AMOUNT,
-            REWARD
+            orderHash, // the hash of the order data
+            COMMIT_AMOUNT, // the amount of ETH sent to the contract
+            REWARD // the reward for the lucky buyer (cost of the nft)
         );
-        vm.prank(user);
+        vm.prank(RECEIVER);
         luckyBuy.commit{value: COMMIT_AMOUNT}(
             RECEIVER,
             cosigner,
@@ -178,9 +177,15 @@ contract FulfillTest is Test {
             REWARD
         );
 
-        // Backend sees the event
-
-        // User submits the commit data and signature to the contract
+        // Backend sees the event, it performs its own validation of the event and then signs valid commits. It broadcasts the fulfillment tx.
+        // id: bigint,
+        // receiver: string,
+        // cosigner: string,
+        // seed: bigint,
+        // counter: bigint,
+        // orderHash: string,
+        // amount: bigint,
+        // reward: bigint
     }
 
     function testhashDataView() public {
