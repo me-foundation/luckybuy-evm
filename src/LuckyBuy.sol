@@ -104,22 +104,25 @@ contract LuckyBuy is
         bytes calldata data_,
         uint256 amount_,
         address token_,
-        uint256 tokenId_
+        uint256 tokenId_,
+        bytes calldata signature_
     ) external payable {
+        // validate tx
         if (msg.value > 0) _depositTreasury(msg.value);
         if (amount_ > balance) revert InsufficientBalance();
         if (isFulfilled[commitId_]) revert AlreadyFulfilled();
-        //if (commitId_ >= luckyBuys.length) revert InvalidCommitId();
+        if (commitId_ >= luckyBuys.length) revert InvalidCommitId();
 
-        //CommitData memory commitData = luckyBuys[commitId_];
+        // validate commit data matches tx data
+        CommitData memory commitData = luckyBuys[commitId_];
 
-        //string memory orderHash = string(
-        //    hashOrder(txTo_, data_, amount_, token_, tokenId_)
-        //);
+        // hash commit, check signature
 
-        //if (commitData.orderHash != orderHash) revert InvalidOrderHash();
+        address cosigner = verify(commitData, signature_);
+        if (cosigner != commitData.cosigner) revert InvalidCoSigner();
+        if (!isCosigner[cosigner]) revert InvalidCoSigner();
 
-        // Check win conditions
+        // TODO: check win conditions
 
         balance -= amount_;
 
@@ -160,5 +163,15 @@ contract LuckyBuy is
 
     receive() external payable {
         _depositTreasury(msg.value);
+    }
+
+    function hashEnhancedDataView(
+        address to,
+        uint256 value,
+        bytes memory data,
+        address tokenAddress,
+        uint256 tokenId
+    ) public pure returns (bytes32) {
+        return keccak256(abi.encode(to, value, data, tokenAddress, tokenId));
     }
 }

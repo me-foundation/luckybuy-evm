@@ -70,7 +70,7 @@ contract SignatureVerifier is ISignatureVerifier, EIP712 {
     /// @param commit A commit.
     /// @param signature An EIP712 signature of the given commit.
     function verify(
-        CommitData calldata commit,
+        CommitData memory commit,
         bytes memory signature
     ) public view returns (address) {
         return _verify(commit, signature);
@@ -81,7 +81,7 @@ contract SignatureVerifier is ISignatureVerifier, EIP712 {
     /// @param signature Signature to verify
     /// @return Address of the signer
     function _verify(
-        CommitData calldata commit,
+        CommitData memory commit,
         bytes memory signature
     ) internal view returns (address) {
         bytes32 digest = _hash(commit);

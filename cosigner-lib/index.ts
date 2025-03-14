@@ -173,12 +173,56 @@ export class MagicSigner {
     token: string,
     tokenId: bigint
   ) {
+    // Convert hex string data to bytes
+    const dataAsBytes = data.startsWith("0x") ? data : "0x" + data;
+
     return ethers.keccak256(
       ethers.AbiCoder.defaultAbiCoder().encode(
         ["address", "bytes", "uint256", "address", "uint256"],
-        [to, data, value, token, tokenId]
+        [to, dataAsBytes, value, token, tokenId]
       )
     );
+  }
+
+  async hashEnhancedData(
+    to: string,
+    value: bigint | number,
+    data: string | Uint8Array,
+    tokenAddress: string,
+    tokenId: bigint | number
+  ): Promise<string> {
+    // Convert all parameters to their appropriate types for encoding
+    const addressTo = ethers.getAddress(to); // Normalize address format
+    const bigValue = BigInt(value); // Ensure it's a BigInt for encoding
+
+    // Handle data based on type
+    let bytesData: Uint8Array;
+    if (typeof data === "string") {
+      // If it's a hex string
+      if (data.startsWith("0x")) {
+        bytesData = ethers.getBytes(data);
+      } else {
+        // If it's a normal string, convert to UTF-8 bytes
+        bytesData = ethers.toUtf8Bytes(data);
+      }
+    } else {
+      // It's already a Uint8Array
+      bytesData = data;
+    }
+
+    const tokenAddr = ethers.getAddress(tokenAddress); // Normalize address
+    const bigTokenId = BigInt(tokenId); // Ensure it's a BigInt
+
+    // Use ABI encoding to match Solidity's abi.encode exactly
+    const encodedData = ethers.AbiCoder.defaultAbiCoder().encode(
+      ["address", "uint256", "bytes", "address", "uint256"],
+      [addressTo, bigValue, bytesData, tokenAddr, bigTokenId]
+    );
+
+    // Hash the encoded data
+    const hash = ethers.keccak256(encodedData);
+
+    return hash;
   }
 }
 
