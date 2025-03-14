@@ -16,7 +16,7 @@ contract SignatureVerifier is ISignatureVerifier, EIP712 {
 
     function hashOrder(
         address txTo_,
-        string memory data_,
+        bytes memory data_,
         uint256 amount_,
         address token_,
         uint256 tokenId_
@@ -26,7 +26,7 @@ contract SignatureVerifier is ISignatureVerifier, EIP712 {
 
     function _hashOrder(
         address txTo_,
-        string memory data_,
+        bytes memory data_,
         uint256 amount_,
         address token_,
         uint256 tokenId_

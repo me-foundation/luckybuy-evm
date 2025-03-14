@@ -183,7 +183,7 @@ export class MagicSigner {
   ) {
     return ethers.keccak256(
       ethers.AbiCoder.defaultAbiCoder().encode(
-        ["address", "string", "uint256", "address", "uint256"],
+        ["address", "bytes", "uint256", "address", "uint256"],
         [to, data, value, token, tokenId]
       )
     );

@@ -13,13 +13,14 @@ contract LuckyBuy is
     SignatureVerifier,
     SignaturePRNG
 {
+    CommitData[] public luckyBuys;
+
     uint256 public balance;
     uint256 public maxReward = 30 ether;
 
     mapping(address cosigner => bool active) public isCosigner;
-
-    CommitData[] public luckyBuys;
     mapping(address receiver => uint256 counter) public luckyBuyCount;
+    mapping(uint256 commitId => bool fulfilled) public isFulfilled;
 
     event Commit(
         address indexed sender,
@@ -28,20 +29,24 @@ contract LuckyBuy is
         address cosigner,
         uint256 seed,
         uint256 counter,
-        string orderHash,
+        bytes orderHash,
         uint256 amount,
         uint256 reward,
         bytes32 hash
     );
+
     event CoSignerAdded(address indexed cosigner);
     event CoSignerRemoved(address indexed cosigner);
 
+    error AlreadyFulfilled();
     error InsufficientBalance();
     error InvalidAmount();
     error InvalidCoSigner();
+    error InvalidOrderHash();
     error InvalidReceiver();
     error InvalidReward();
     error FulfillmentFailed();
+    error InvalidCommitId();
 
     constructor() MEAccessControl() SignatureVerifier("LuckyBuy", "1") {
         uint256 existingBalance = address(this).balance;
@@ -54,7 +59,7 @@ contract LuckyBuy is
         address receiver_,
         address cosigner_,
         uint256 seed_,
-        string calldata orderHash_,
+        bytes calldata orderHash_,
         uint256 reward_
     ) external payable {
         if (msg.value == 0) revert InvalidAmount();
@@ -103,13 +108,30 @@ contract LuckyBuy is
     ) external payable {
         if (msg.value > 0) _depositTreasury(msg.value);
         if (amount_ > balance) revert InsufficientBalance();
+        if (isFulfilled[commitId_]) revert AlreadyFulfilled();
+        //if (commitId_ >= luckyBuys.length) revert InvalidCommitId();
+
+        //CommitData memory commitData = luckyBuys[commitId_];
+
+        //string memory orderHash = string(
+        //    hashOrder(txTo_, data_, amount_, token_, tokenId_)
+        //);
+
+        //if (commitData.orderHash != orderHash) revert InvalidOrderHash();
 
         // Check win conditions
 
         balance -= amount_;
 
-        (bool success, ) = txTo_.call{value: amount_}(data_);
-        if (!success) revert FulfillmentFailed(); // temporary
+        _fulfillOrder(txTo_, data_, amount_);
+    }
+
+    function _fulfillOrder(
+        address txTo_,
+        bytes calldata data_,
+        uint256 amount_
+    ) internal returns (bool success) {
+        (success, ) = txTo_.call{value: amount_}(data_);
     }
 
     function addCosigner(
