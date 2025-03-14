@@ -44,9 +44,9 @@ contract FulfillTest is Test {
 
     address cosigner = 0xE052c9CFe22B5974DC821cBa907F1DAaC7979c94;
     bytes signature =
-        hex"4ed755932da674461316c49100a150938001dc43c76a30885b11e8c1c8a5560e5a2c474987025d94a8309b0301692ffdc237891dfec12a55048549b2013170b31b";
+        hex"6afe952027a1c0a214187ef133c5bca40fca427c1d32340a4bbfd029ec93bab46b4bfcbb3bdc8b61c78d71a0939221cb09042ffdd1e3af2179ca125dc65602f01b";
     bytes32 digest =
-        hex"3b7e2efa9461d0fdf393718720ac47561bb8e539e4a2b9c47e9a54325a31ce4e";
+        hex"711bdf04038f74dfe63b46189a9148316588d397414f6b3dda9b6367d4df3249";
     // The target block number from the comment
     uint256 constant FORK_BLOCK = 22035010;
 
@@ -191,8 +191,14 @@ contract FulfillTest is Test {
         );
 
         // Backend sees the event, it performs its own validation of the event and then signs valid commits. It broadcasts the fulfillment tx.
-
-        // console.log to confirm with typescript
+        console.log("\nCommit Input Data:");
+        console.log("Receiver:", RECEIVER);
+        console.log("Cosigner:", cosigner);
+        console.log("Seed:", seed);
+        console.logBytes32(orderHash);
+        console.log("Commit Amount:", COMMIT_AMOUNT);
+        console.log("Reward:", REWARD);
+        // Get the stored data
         (
             uint256 id,
             address storedReceiver,
@@ -204,24 +210,185 @@ contract FulfillTest is Test {
             uint256 storedReward
         ) = luckyBuy.luckyBuys(0);
 
-        console.log(id);
-        console.log(storedReceiver);
-        console.log(storedCosigner);
-        console.log(storedSeed);
-        console.log(storedCounter);
+        // Log the stored data
+        console.log("\nStored Commit Data:");
+        console.log("ID:", id);
+        console.log("Receiver:", storedReceiver);
+        console.log("Cosigner:", storedCosigner);
+        console.log("Seed:", storedSeed);
+        console.log("Counter:", storedCounter);
         console.logBytes32(storedOrderHash);
-        console.log(storedAmount);
-        console.log(storedReward);
+        console.log("Amount:", storedAmount);
+        console.log("Reward:", storedReward);
 
-        console.logBytes32(luckyBuy.hashLuckyBuy(0));
-        console.log(address(luckyBuy));
-        console.log(luckyBuy.mockRecover(digest, signature));
-        console.log(luckyBuy.mockRecover(luckyBuy.hashLuckyBuy(0), signature));
+        // Log the hashes and recovery
+        bytes32 onChainHash = luckyBuy.hashLuckyBuy(0);
+        console.log("\nHash Comparison:");
+        console.logBytes32(digest); // Off-chain hash
+        console.logBytes32(onChainHash); // On-chain hash
+
+        // Log the recovered addresses
+        address recoveredFromOffchain = luckyBuy.mockRecover(digest, signature);
+        address recoveredFromOnchain = luckyBuy.mockRecover(
+            onChainHash,
+            signature
+        );
+        console.log("\nRecovered Addresses:");
+        console.log("From Off-chain Hash:", recoveredFromOffchain);
+        console.log("From On-chain Hash:", recoveredFromOnchain);
+        console.log("Expected Cosigner:", cosigner);
     }
 
     function testhashDataView() public {
         console.logBytes32(
             luckyBuy.hashOrder(TARGET, REWARD, DATA, TOKEN, TOKEN_ID)
         );
+    }
+
+    function test_hash_components() public {
+        bytes32 orderHash2 = luckyBuy.hashOrder(
+            TARGET,
+            REWARD,
+            DATA,
+            TOKEN,
+            TOKEN_ID
+        );
+
+        assertEq(orderHash2, TypescriptOrderHash);
+
+        uint256 seed2 = 12345; // User provides this data
+
+        vm.prank(RECEIVER);
+        luckyBuy.commit{value: COMMIT_AMOUNT}(
+            RECEIVER,
+            cosigner,
+            seed2,
+            orderHash2,
+            REWARD
+        );
+        // Get the stored commit data
+        (
+            uint256 id,
+            address receiver,
+            address cosigner2,
+            uint256 seed,
+            uint256 counter,
+            bytes32 orderHash,
+            uint256 amount,
+            uint256 reward
+        ) = luckyBuy.luckyBuys(0);
+
+        // Log the type hash (the hash of the type string)
+        bytes32 typeHash = keccak256(
+            "CommitData(uint256 id,address receiver,address cosigner,uint256 seed,uint256 counter,bytes32 orderHash,uint256 amount,uint256 reward)"
+        );
+        console.log("\nType Hash:");
+        console.logBytes32(typeHash);
+
+        // Log the encoded data
+        bytes memory encoded = abi.encode(
+            typeHash,
+            id,
+            receiver,
+            cosigner2,
+            seed,
+            counter,
+            orderHash,
+            amount,
+            reward
+        );
+        console.log("\nEncoded Data:");
+        console.logBytes(encoded);
+
+        // Log the struct hash
+        bytes32 structHash = keccak256(encoded);
+        console.log("\nStruct Hash:");
+        console.logBytes32(structHash);
+    }
+
+    function test_final_digest() public {
+        bytes32 orderHash2 = luckyBuy.hashOrder(
+            TARGET,
+            REWARD,
+            DATA,
+            TOKEN,
+            TOKEN_ID
+        );
+
+        assertEq(orderHash2, TypescriptOrderHash);
+
+        uint256 seed2 = 12345; // User provides this data
+
+        vm.prank(RECEIVER);
+        luckyBuy.commit{value: COMMIT_AMOUNT}(
+            RECEIVER,
+            cosigner,
+            seed2,
+            orderHash2,
+            REWARD
+        );
+        // First get the struct hash from our previous test
+        (
+            uint256 id,
+            address receiver,
+            address cosigner,
+            uint256 seed,
+            uint256 counter,
+            bytes32 orderHash,
+            uint256 amount,
+            uint256 reward
+        ) = luckyBuy.luckyBuys(0);
+
+        // Calculate struct hash
+        bytes32 typeHash = keccak256(
+            "CommitData(uint256 id,address receiver,address cosigner,uint256 seed,uint256 counter,bytes32 orderHash,uint256 amount,uint256 reward)"
+        );
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                typeHash,
+                id,
+                receiver,
+                cosigner,
+                seed,
+                counter,
+                orderHash,
+                amount,
+                reward
+            )
+        );
+
+        // Get domain info from the contract
+        (
+            bytes1 fields,
+            string memory name,
+            string memory version,
+            uint256 chainId,
+            address verifyingContract,
+            bytes32 salt,
+            uint256[] memory extensions
+        ) = luckyBuy.eip712Domain();
+
+        console.log("\nDomain Info:");
+        console.log("Name:", name);
+        console.log("Version:", version);
+        console.log("ChainId:", chainId);
+        console.log("Contract:", verifyingContract);
+
+        // Log the struct hash
+        console.log("\nStruct Hash:");
+        console.logBytes32(structHash);
+
+        // Get the final hash from the contract for comparison
+        bytes32 onChainHash = luckyBuy.hashLuckyBuy(0);
+        console.log("\nOn-Chain Hash:");
+        console.logBytes32(onChainHash);
+
+        // Log the off-chain hash we're trying to match
+        console.log("\nOff-Chain Hash:");
+        console.logBytes32(digest);
+
+        // Get the block chain id
+        console.log(block.chainid);
     }
 }

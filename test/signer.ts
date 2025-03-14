@@ -14,7 +14,7 @@ async function testMagicSignerCommitData() {
     const contract = ethers.getAddress(
       "0x522B3294E6d06aA25Ad0f1B8891242E335D3B459"
     ); // match solidity tests
-    const chainId = 31337; // Anvil
+    const chainId = 1; // Anvil
 
     const signer = new MagicSigner({
       contract,
@@ -62,7 +62,7 @@ async function testMagicSignerOrderHashData() {
     }
 
     const contract = "0xE052c9CFe22B5974DC821cBa907F1DAaC7979c94"; // This won't matter for the order hash, it's just a keccak256
-    const chainId = 31337; // Anvil
+    const chainId = 1; // Anvil
 
     const signer = new MagicSigner({
       contract,
