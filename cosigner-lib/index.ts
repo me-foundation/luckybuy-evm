@@ -20,14 +20,6 @@ interface CommitData {
   reward: bigint;
 }
 
-interface OrderHashData {
-  to: string;
-  value: bigint;
-  data: string;
-  token: string;
-  tokenId: bigint;
-}
-
 export class MagicSigner {
   public contract: string;
   public signer: ethers.Wallet;

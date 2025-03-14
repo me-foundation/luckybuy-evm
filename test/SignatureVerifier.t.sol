@@ -58,17 +58,17 @@ contract TestSignatureVerifier is Test {
     }
 
     // Quick way to test the signature from the typescript test
-    // /function testTypescriptSignatures() public {
-    // /    bytes
-    // /        memory signature = hex"56426ff5a075ea58127bd2e22329dd141b95bb0cb25cd89edeb4fda05a1e802a3fb7729fc0a86aaba34fc3a47885347b2fa3ae26588cf4b98449e82f9bfb9c0e1c";
-    // /
-    // /    address recovered = sigVerifier.debugVerify(
-    // /        0xfce7e46c5c5c646da95e8b9ef60753b303fc0b0f8342e17d42b113ee8d10381f,
-    // /        signature
-    // /    );
-    // /
-    // /    console.log("Recovered:", recovered);
-    // /}
+    //function testTypescriptSignatures() public {
+    //    bytes
+    //        memory signature = hex"6e770e2253444563387afd1d832f07704ca9bdef17e46763219a2680f77c3f530ae8541e17eea7601b981b3f50711b980e534d0226ef8a53fea579993be6d1241b";
+    //
+    //    address recovered = sigVerifier.debugVerify(
+    //        0x36eabcb5d3a4856149aa24c63133d02602298e6fd632cedb7333f68b5d1f7686,
+    //        signature
+    //    );
+    //
+    //    console.log("Recovered:", recovered);
+    //}
 
     function _signCommit(
         ISignatureVerifier.CommitData memory commit

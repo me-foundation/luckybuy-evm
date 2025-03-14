@@ -29,7 +29,7 @@ async function testMagicSignerCommitData() {
     const seed = BigInt(1);
     const counter = BigInt(1);
 
-    const orderHash = "0x0";
+    const orderHash = "1234";
     const amount = BigInt(1);
     const reward = BigInt(100);
 
@@ -84,5 +84,5 @@ async function testMagicSignerOrderHashData() {
   }
 }
 
-//testMagicSignerCommitData();
+testMagicSignerCommitData();
 testMagicSignerOrderHashData();
