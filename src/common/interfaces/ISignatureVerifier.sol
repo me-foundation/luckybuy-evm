@@ -9,7 +9,7 @@ interface ISignatureVerifier {
         address cosigner;
         uint256 seed;
         uint256 counter;
-        bytes orderHash;
+        bytes32 orderHash;
         uint256 amount;
         uint256 reward;
     }

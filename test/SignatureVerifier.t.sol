@@ -50,7 +50,7 @@ contract TestSignatureVerifier is Test {
         console.log("cosigner:", commitData.cosigner);
         console.log("seed:", commitData.seed);
         console.log("counter:", commitData.counter);
-        console.logBytes(commitData.orderHash);
+        console.logBytes32(commitData.orderHash);
         console.log("amount:", commitData.amount);
         console.log("reward:", commitData.reward);
 

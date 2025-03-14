@@ -197,7 +197,7 @@ export class MagicSigner {
 
     // Use ABI encoding to match Solidity's abi.encode exactly
     const encodedData = ethers.AbiCoder.defaultAbiCoder().encode(
-      ["address", "uint256", "bytes", "address", "uint256"],
+      ["address", "uint256", "bytes32", "address", "uint256"],
       [addressTo, bigValue, bytesData, tokenAddr, bigTokenId]
     );
 

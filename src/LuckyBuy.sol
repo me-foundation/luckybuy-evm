@@ -29,10 +29,9 @@ contract LuckyBuy is
         address cosigner,
         uint256 seed,
         uint256 counter,
-        bytes orderHash,
+        bytes32 orderHash,
         uint256 amount,
-        uint256 reward,
-        bytes32 hash
+        uint256 reward
     );
 
     event CoSignerAdded(address indexed cosigner);
@@ -59,7 +58,7 @@ contract LuckyBuy is
         address receiver_,
         address cosigner_,
         uint256 seed_,
-        bytes calldata orderHash_,
+        bytes32 orderHash_,
         uint256 reward_
     ) external payable {
         if (msg.value == 0) revert InvalidAmount();
@@ -93,8 +92,7 @@ contract LuckyBuy is
             userCounter,
             orderHash_, // Relay tx properties: to, data, value
             msg.value,
-            reward_,
-            hash(commitData) // verify above values offchain with this hash
+            reward_
         );
     }
 
@@ -163,5 +161,15 @@ contract LuckyBuy is
 
     receive() external payable {
         _depositTreasury(msg.value);
+    }
+
+    function hashEnhancedDataView(
+        address to,
+        uint256 value,
+        bytes memory data,
+        address tokenAddress,
+        uint256 tokenId
+    ) public pure returns (bytes32) {
+        return keccak256(abi.encode(to, value, data, tokenAddress, tokenId));
     }
 }
