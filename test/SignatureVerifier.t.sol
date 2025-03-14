@@ -247,8 +247,8 @@ contract TestSignatureVerifier is Test {
 
         bytes32 digest = sigVerifier.hashOrder(
             0x0000000000000068F116a894984e2DB1123eB395,
-            data,
             20000000000000 wei,
+            data,
             0x415A82E77642113701FE190554fDDD7701c3B262,
             8295
         );

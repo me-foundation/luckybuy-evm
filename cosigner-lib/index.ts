@@ -168,24 +168,6 @@ export class MagicSigner {
 
   async hashOrder(
     to: string,
-    data: string,
-    value: bigint,
-    token: string,
-    tokenId: bigint
-  ) {
-    // Convert hex string data to bytes
-    const dataAsBytes = data.startsWith("0x") ? data : "0x" + data;
-
-    return ethers.keccak256(
-      ethers.AbiCoder.defaultAbiCoder().encode(
-        ["address", "bytes", "uint256", "address", "uint256"],
-        [to, dataAsBytes, value, token, tokenId]
-      )
-    );
-  }
-
-  async hashEnhancedData(
-    to: string,
     value: bigint | number,
     data: string | Uint8Array,
     tokenAddress: string,

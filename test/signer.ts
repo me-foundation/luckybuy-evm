@@ -76,13 +76,7 @@ async function testMagicSignerOrderHashData() {
     const token = "0x415A82E77642113701FE190554fDDD7701c3B262";
     const tokenId = BigInt(8295);
 
-    const digest = await signer.hashEnhancedData(
-      to,
-      value,
-      data,
-      token,
-      tokenId
-    );
+    const digest = await signer.hashOrder(to, value, data, token, tokenId);
 
     console.log("\nDigest:", digest);
   } catch (error) {
