@@ -49,10 +49,16 @@ contract FulfillTest is Test {
     address cosigner = 0xE052c9CFe22B5974DC821cBa907F1DAaC7979c94;
 
     // cosigner-lib signature and digest
+
+    bytes fail_signature =
+        hex"a5bd3a311356e041d3b8c2c135bc3877f2910283198d0b57c5878e9ea8921af36db2a2f4ef3794f83c170189e6dce7edb41755ea0d2d44ce62f980f57b17d9ba1c";
+    bytes32 fail_digest =
+        hex"ed64e5efde45eaee99eba1ff05f6c5103d14e7dca9da4e66492dcc12c17a28cb";
+
     bytes signature =
-        hex"6afe952027a1c0a214187ef133c5bca40fca427c1d32340a4bbfd029ec93bab46b4bfcbb3bdc8b61c78d71a0939221cb09042ffdd1e3af2179ca125dc65602f01b";
+        hex"5cd285e01b1c1b8b6948e5f6a436ab35d37b392106959bd6448d1d72070dfcc3081a5ac8568a6e38c64e9a4a383cbc619373f43036274e664b004d4cab01d76d1c";
     bytes32 digest =
-        hex"711bdf04038f74dfe63b46189a9148316588d397414f6b3dda9b6367d4df3249";
+        hex"4420f0d74a11a8a46afaee4833815863d91350e1736dcb5714aee8a91bfb9fa0";
     // The target block number from the comment
     uint256 constant FORK_BLOCK = 22035010;
 
@@ -70,7 +76,8 @@ contract FulfillTest is Test {
     address constant TOKEN = 0x415A82E77642113701FE190554fDDD7701c3B262;
     uint256 constant TOKEN_ID = 8295;
     uint256 constant REWARD = 20000000000000 wei;
-    uint256 constant COMMIT_AMOUNT = REWARD / 100; // 1%
+    uint256 constant COMMIT_AMOUNT = REWARD; // 100%
+    uint256 constant FAIL_COMMIT_AMOUNT = REWARD / 10000; // .1%
 
     IERC721 nft = IERC721(TOKEN);
 
@@ -151,7 +158,7 @@ contract FulfillTest is Test {
         assertEq(nft.ownerOf(TOKEN_ID), RECEIVER);
     }
 
-    function test_end_to_end() public {
+    function test_end_to_end_success() public {
         // Skip the test entirely if we don't have an RPC URL
         if (!shouldRunTests) {
             console.log("Test skipped: MAINNET_RPC_URL not defined");
@@ -266,6 +273,69 @@ contract FulfillTest is Test {
             FUND_AMOUNT + COMMIT_AMOUNT - REWARD
         );
 
+        console.log(luckyBuy.rng(signature));
+    }
+
+    function test_end_to_end_fail() public {
+        // Skip the test entirely if we don't have an RPC URL
+        if (!shouldRunTests) {
+            console.log("Test skipped: MAINNET_RPC_URL not defined");
+            return;
+        }
+
+        address currentOwner = nft.ownerOf(TOKEN_ID);
+
+        (bool success, ) = address(luckyBuy).call{value: FUND_AMOUNT}("");
+        assertEq(success, true);
+
+        bytes32 orderHash = luckyBuy.hashOrder(
+            TARGET,
+            REWARD,
+            DATA,
+            TOKEN,
+            TOKEN_ID
+        );
+
+        assertEq(orderHash, TypescriptOrderHash);
+
+        uint256 seed = 12345; // User provides this data
+        uint256 balance = address(luckyBuy).balance;
+
+        vm.expectEmit(true, true, true, false);
+        emit Commit(
+            RECEIVER, // indexed sender
+            0, // indexed commitId (first commit, so ID is 0)
+            RECEIVER, // indexed receiver
+            cosigner, // cosigner
+            seed, // seed (12345)
+            0, // counter (first commit, so counter is 0)
+            orderHash, // orderHash
+            FAIL_COMMIT_AMOUNT, // amount
+            REWARD // reward
+        );
+        vm.prank(RECEIVER);
+        luckyBuy.commit{value: FAIL_COMMIT_AMOUNT}(
+            RECEIVER,
+            cosigner,
+            seed,
+            orderHash,
+            REWARD
+        );
+
+        // fulfill the order
+        luckyBuy.fulfill(
+            0,
+            TARGET,
+            DATA,
+            REWARD,
+            TOKEN,
+            TOKEN_ID,
+            fail_signature
+        );
+
+        assertEq(nft.ownerOf(TOKEN_ID), currentOwner);
+        assertEq(address(luckyBuy).balance, balance + FAIL_COMMIT_AMOUNT);
+        assertEq(luckyBuy.isFulfilled(0), true);
         console.log(luckyBuy.rng(signature));
     }
 

@@ -31,7 +31,7 @@ async function testMagicSignerCommitData() {
     const counter = BigInt(0);
     const orderHash =
       "0x00b839f580603f650be760ccd549d9ddbb877aa80ccf709f00f1950f51c35a99";
-    const amount = BigInt(200000000000);
+    const amount = BigInt(2000000000);
     const reward = BigInt(20000000000000);
 
     const result1 = await signer.signCommit(

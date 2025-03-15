@@ -36,6 +36,17 @@ contract LuckyBuy is
 
     event CoSignerAdded(address indexed cosigner);
     event CoSignerRemoved(address indexed cosigner);
+    event Fulfillment(
+        address indexed sender,
+        uint256 indexed commitId,
+        uint256 rng,
+        uint256 odds,
+        bool win,
+        address token,
+        uint256 tokenId,
+        uint256 amount,
+        address receiver
+    );
 
     error AlreadyFulfilled();
     error InsufficientBalance();
@@ -148,13 +159,45 @@ contract LuckyBuy is
             bool success = _fulfillOrder(orderTo_, orderData_, orderAmount_);
             if (success) {
                 // emit a success transfer for the nft
+                emit Fulfillment(
+                    msg.sender,
+                    commitId_,
+                    rng,
+                    odds,
+                    win,
+                    token_,
+                    tokenId_,
+                    orderAmount_,
+                    commitData.receiver
+                );
             } else {
                 // emit a success transfer for eth
                 payable(commitData.receiver).transfer(orderAmount_);
+                emit Fulfillment(
+                    msg.sender,
+                    commitId_,
+                    rng,
+                    odds,
+                    win,
+                    address(0),
+                    0,
+                    orderAmount_,
+                    commitData.receiver
+                );
             }
         } else {
-            // If the user loses, we leave the balance unchanged
             // emit the failure
+            emit Fulfillment(
+                msg.sender,
+                commitId_,
+                rng,
+                odds,
+                win,
+                address(0),
+                0,
+                0,
+                commitData.receiver
+            );
         }
     }
 
