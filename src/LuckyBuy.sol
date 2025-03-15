@@ -150,7 +150,7 @@ contract LuckyBuy is
                 // emit a success transfer for the nft
             } else {
                 // emit a success transfer for eth
-                commitData.receiver.transfer(orderAmount_);
+                payable(commitData.receiver).transfer(orderAmount_);
             }
         } else {
             // If the user loses, we leave the balance unchanged
