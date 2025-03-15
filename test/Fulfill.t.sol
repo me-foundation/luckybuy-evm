@@ -37,6 +37,10 @@ contract MockLuckyBuy is LuckyBuy {
     ) public view returns (address) {
         return ECDSA.recover(digest, signature);
     }
+
+    function rng(bytes calldata signature) public view returns (uint256) {
+        return _rng(signature);
+    }
 }
 contract FulfillTest is Test {
     MockLuckyBuy luckyBuy;
@@ -261,6 +265,8 @@ contract FulfillTest is Test {
             address(luckyBuy).balance,
             FUND_AMOUNT + COMMIT_AMOUNT - REWARD
         );
+
+        console.log(luckyBuy.rng(signature));
     }
 
     function testhashDataView() public {

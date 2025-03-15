@@ -127,7 +127,7 @@ contract LuckyBuy is
             hashOrder(orderTo_, orderAmount_, orderData_, token_, tokenId_)
         ) revert InvalidOrderHash();
 
-        // validate the amount
+        // validate the reward amount
         if (orderAmount_ != commitData.reward) revert InvalidAmount();
 
         // hash commit, check signature
@@ -137,16 +137,32 @@ contract LuckyBuy is
 
         // TODO: check win conditions
         // calculate the odds in base points
-        uint256 odds = (commitData.amount * 10000) / commitData.reward;
+        uint256 odds = _calculateOdds(commitData.amount, commitData.reward);
+        uint256 rng = _rng(signature_);
+        bool win = rng < odds;
 
-        // If the user wins, we need to transfer the NFT to the receiver
-        balance -= orderAmount_;
+        if (win) {
+            // If the user wins, we need to transfer the NFT to the receiver
+            balance -= orderAmount_;
 
-        _fulfillOrder(orderTo_, orderData_, orderAmount_);
+            bool success = _fulfillOrder(orderTo_, orderData_, orderAmount_);
+            if (success) {
+                // emit a success transfer for the nft
+            } else {
+                // emit a success transfer for eth
+                commitData.receiver.transfer(orderAmount_);
+            }
+        } else {
+            // If the user loses, we leave the balance unchanged
+            // emit the failure
+        }
+    }
 
-        // If the user wins and the order cannot be fulfilled, we transfer the value of the NFT to the receiver
-
-        // If the user loses, we leave the balance unchanged
+    function _calculateOdds(
+        uint256 amount,
+        uint256 reward
+    ) internal returns (uint256) {
+        return (amount * 10000) / reward;
     }
 
     function _fulfillOrder(
