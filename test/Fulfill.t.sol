@@ -254,6 +254,8 @@ contract FulfillTest is Test {
 
         assertEq(nft.ownerOf(TOKEN_ID), RECEIVER);
 
+        vm.expectRevert(LuckyBuy.AlreadyFulfilled.selector);
+        luckyBuy.fulfill(0, TARGET, DATA, REWARD, TOKEN, TOKEN_ID, signature);
         // check the balance of the contract
         assertEq(
             address(luckyBuy).balance,
@@ -353,7 +355,7 @@ contract FulfillTest is Test {
         (
             uint256 id,
             address receiver,
-            address cosigner,
+            address cosigner_,
             uint256 seed,
             uint256 counter,
             bytes32 orderHash,
@@ -371,7 +373,7 @@ contract FulfillTest is Test {
                 typeHash,
                 id,
                 receiver,
-                cosigner,
+                cosigner_,
                 seed,
                 counter,
                 orderHash,

@@ -63,6 +63,7 @@ contract LuckyBuy is
     ) external payable {
         if (msg.value == 0) revert InvalidAmount();
         if (!isCosigner[cosigner_]) revert InvalidCoSigner();
+        if (cosigner_ == address(0)) revert InvalidCoSigner();
         if (receiver_ == address(0)) revert InvalidReceiver();
         if (reward_ > maxReward) revert InvalidReward();
         if (msg.value > reward_) revert InvalidReward();
@@ -98,18 +99,21 @@ contract LuckyBuy is
 
     function fulfill(
         uint256 commitId_,
-        address txTo_,
-        bytes calldata data_,
-        uint256 amount_,
+        address orderTo_,
+        bytes calldata orderData_,
+        uint256 orderAmount_,
         address token_,
         uint256 tokenId_,
         bytes calldata signature_
     ) external payable {
         // validate tx
         if (msg.value > 0) _depositTreasury(msg.value);
-        if (amount_ > balance) revert InsufficientBalance();
+        if (orderAmount_ > balance) revert InsufficientBalance();
         if (isFulfilled[commitId_]) revert AlreadyFulfilled();
         if (commitId_ >= luckyBuys.length) revert InvalidCommitId();
+
+        // mark the commit as fulfilled
+        isFulfilled[commitId_] = true;
 
         // validate commit data matches tx data
         CommitData memory commitData = luckyBuys[commitId_];
@@ -117,20 +121,22 @@ contract LuckyBuy is
         // validate the order hash
         if (
             commitData.orderHash !=
-            hashOrder(txTo_, amount_, data_, token_, tokenId_)
+            hashOrder(orderTo_, orderAmount_, orderData_, token_, tokenId_)
         ) revert InvalidOrderHash();
 
-        // hash commit, check signature
+        // validate the amount
+        if (orderAmount_ != commitData.reward) revert InvalidAmount();
 
+        // hash commit, check signature
         address cosigner = verify(commitData, signature_);
         if (cosigner != commitData.cosigner) revert InvalidCoSigner();
         if (!isCosigner[cosigner]) revert InvalidCoSigner();
 
         // TODO: check win conditions
 
-        balance -= amount_;
+        balance -= orderAmount_;
 
-        _fulfillOrder(txTo_, data_, amount_);
+        _fulfillOrder(orderTo_, orderData_, orderAmount_);
     }
 
     function _fulfillOrder(
