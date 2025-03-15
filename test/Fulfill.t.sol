@@ -43,6 +43,8 @@ contract FulfillTest is Test {
     address admin = address(0x1);
 
     address cosigner = 0xE052c9CFe22B5974DC821cBa907F1DAaC7979c94;
+
+    // cosigner-lib signature and digest
     bytes signature =
         hex"6afe952027a1c0a214187ef133c5bca40fca427c1d32340a4bbfd029ec93bab46b4bfcbb3bdc8b61c78d71a0939221cb09042ffdd1e3af2179ca125dc65602f01b";
     bytes32 digest =
@@ -58,6 +60,7 @@ contract FulfillTest is Test {
     bytes constant DATA =
         hex"e7acab24000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000006e00000007b02230091a7ed01230072f7006a004d60a8d4e71d599b8104250f0000000000000000000000000000e052c9cfe22b5974dc821cba907f1daac7979c9400000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000052000000000000000000000000000000000000000000000000000000000000006400000000000000000000000000db2536a038f68a2c4d5f7428a98299cf566a59a000000000000000000000000004c00500000ad104d7dbd00e3ae0a5c00560c000000000000000000000000000000000000000000000000000000000000000160000000000000000000000000000000000000000000000000000000000000022000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000067cf174c0000000000000000000000000000000000000000000000000000000067d30b520000000000000000000000000000000000000000000000000000000000000000360c6ebe000000000000000000000000000000000000000033c2f8be86434b860000007b02230091a7ed01230072f7006a004d60a8d4e71d599b8104250f0000000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002000000000000000000000000415a82e77642113701fe190554fddd7701c3b262000000000000000000000000000000000000000000000000000000000000206700000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001101eedb780000000000000000000000000000000000000000000000000000001101eedb78000000000000000000000000000db2536a038f68a2c4d5f7428a98299cf566a59a000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000174876e800000000000000000000000000000000000000000000000000000000174876e8000000000000000000000000000000a26b00c1f0df003000390027140000faa719000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001176592e000000000000000000000000000000000000000000000000000000001176592e0000000000000000000000000005d0d2229c75f13cb989bc5b48966f19170e879c600000000000000000000000000000000000000000000000000000000000000e3937d7c3c7bad7cce0343e161705a5cb7174c4b10366d4501fc48bddb0466cef2657da121e80b7e9e8dc7580fd672177fc431ed96a3bfdaa8160c2619c247a10500000f5555e3c5fe5d036886ef457c6099624d36106d0a7a5963416e619e0dd70ef5afb6c923cf26789f0637c18b43ad5509d0ad354daf1410a3574aebf3e5f420371f2e2b5d598b446140dc14a0a0ab918e458caf518097b88a1e2bacf2641058740982e1363e69190f9b615b749711f5529e4ba38f45955fa7a0e2ed592e3d6a88544d8707848281e625f61622aeeccb0af71cff27e28538a891165116f41d8c6dbf0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001d4da48b1ebc9d95";
 
+    uint256 constant FUND_AMOUNT = 10 ether;
     // Token address from the transaction data
     address constant TARGET = 0x0000000000000068F116a894984e2DB1123eB395; // Seaport
     address constant TOKEN = 0x415A82E77642113701FE190554fDDD7701c3B262;
@@ -151,6 +154,10 @@ contract FulfillTest is Test {
             return;
         }
 
+        // Fund the contract treasury
+        (bool success, ) = address(luckyBuy).call{value: FUND_AMOUNT}("");
+        assertEq(success, true);
+
         // The user selects a token and amount to pay from our API.
         // This gives us TARGET, REWARD, DATA, TOKEN, TOKEN_ID
         // Typescript will hash to: 0x00b839f580603f650be760ccd549d9ddbb877aa80ccf709f00f1950f51c35a99
@@ -191,13 +198,14 @@ contract FulfillTest is Test {
         );
 
         // Backend sees the event, it performs its own validation of the event and then signs valid commits. It broadcasts the fulfillment tx.
-        console.log("\nCommit Input Data:");
-        console.log("Receiver:", RECEIVER);
-        console.log("Cosigner:", cosigner);
-        console.log("Seed:", seed);
-        console.logBytes32(orderHash);
-        console.log("Commit Amount:", COMMIT_AMOUNT);
-        console.log("Reward:", REWARD);
+
+        // console.log("\nCommit Input Data:");
+        // console.log("Receiver:", RECEIVER);
+        // console.log("Cosigner:", cosigner);
+        // console.log("Seed:", seed);
+        // console.logBytes32(orderHash);
+        // console.log("Commit Amount:", COMMIT_AMOUNT);
+        // console.log("Reward:", REWARD);
         // Get the stored data
         (
             uint256 id,
@@ -211,21 +219,22 @@ contract FulfillTest is Test {
         ) = luckyBuy.luckyBuys(0);
 
         // Log the stored data
-        console.log("\nStored Commit Data:");
-        console.log("ID:", id);
-        console.log("Receiver:", storedReceiver);
-        console.log("Cosigner:", storedCosigner);
-        console.log("Seed:", storedSeed);
-        console.log("Counter:", storedCounter);
-        console.logBytes32(storedOrderHash);
-        console.log("Amount:", storedAmount);
-        console.log("Reward:", storedReward);
+
+        // console.log("\nStored Commit Data:");
+        // console.log("ID:", id);
+        // console.log("Receiver:", storedReceiver);
+        // console.log("Cosigner:", storedCosigner);
+        // console.log("Seed:", storedSeed);
+        // console.log("Counter:", storedCounter);
+        // console.logBytes32(storedOrderHash);
+        // console.log("Amount:", storedAmount);
+        // console.log("Reward:", storedReward);
 
         // Log the hashes and recovery
         bytes32 onChainHash = luckyBuy.hashLuckyBuy(0);
-        console.log("\nHash Comparison:");
-        console.logBytes32(digest); // Off-chain hash
-        console.logBytes32(onChainHash); // On-chain hash
+        // console.log("\nHash Comparison:");
+        // console.logBytes32(digest); // Off-chain hash
+        // console.logBytes32(onChainHash); // On-chain hash
 
         // Log the recovered addresses
         address recoveredFromOffchain = luckyBuy.mockRecover(digest, signature);
@@ -233,10 +242,23 @@ contract FulfillTest is Test {
             onChainHash,
             signature
         );
-        console.log("\nRecovered Addresses:");
-        console.log("From Off-chain Hash:", recoveredFromOffchain);
-        console.log("From On-chain Hash:", recoveredFromOnchain);
-        console.log("Expected Cosigner:", cosigner);
+        // console.log("\nRecovered Addresses:");
+        // console.log("From Off-chain Hash:", recoveredFromOffchain);
+        // console.log("From On-chain Hash:", recoveredFromOnchain);
+        // console.log("Expected Cosigner:", cosigner);
+        assertEq(recoveredFromOffchain, cosigner);
+        assertEq(recoveredFromOnchain, cosigner);
+
+        // fulfill the order
+        luckyBuy.fulfill(0, TARGET, DATA, REWARD, TOKEN, TOKEN_ID, signature);
+
+        assertEq(nft.ownerOf(TOKEN_ID), RECEIVER);
+
+        // check the balance of the contract
+        assertEq(
+            address(luckyBuy).balance,
+            FUND_AMOUNT + COMMIT_AMOUNT - REWARD
+        );
     }
 
     function testhashDataView() public {

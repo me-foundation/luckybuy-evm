@@ -114,6 +114,12 @@ contract LuckyBuy is
         // validate commit data matches tx data
         CommitData memory commitData = luckyBuys[commitId_];
 
+        // validate the order hash
+        if (
+            commitData.orderHash !=
+            hashOrder(txTo_, amount_, data_, token_, tokenId_)
+        ) revert InvalidOrderHash();
+
         // hash commit, check signature
 
         address cosigner = verify(commitData, signature_);
