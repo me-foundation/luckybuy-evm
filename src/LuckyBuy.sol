@@ -68,6 +68,9 @@ contract LuckyBuy is
         if (reward_ > maxReward) revert InvalidReward();
         if (msg.value > reward_) revert InvalidReward();
 
+        if ((msg.value * BASE_POINTS) / reward_ > BASE_POINTS)
+            revert InvalidAmount();
+
         uint256 commitId = luckyBuys.length;
         uint256 userCounter = luckyBuyCount[receiver_]++;
 
@@ -133,10 +136,17 @@ contract LuckyBuy is
         if (!isCosigner[cosigner]) revert InvalidCoSigner();
 
         // TODO: check win conditions
+        // calculate the odds in base points
+        uint256 odds = (commitData.amount * 10000) / commitData.reward;
 
+        // If the user wins, we need to transfer the NFT to the receiver
         balance -= orderAmount_;
 
         _fulfillOrder(orderTo_, orderData_, orderAmount_);
+
+        // If the user wins and the order cannot be fulfilled, we transfer the value of the NFT to the receiver
+
+        // If the user loses, we leave the balance unchanged
     }
 
     function _fulfillOrder(
