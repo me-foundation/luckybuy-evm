@@ -243,14 +243,4 @@ contract LuckyBuy is
     receive() external payable {
         _depositTreasury(msg.value);
     }
-
-    function hashEnhancedDataView(
-        address to,
-        uint256 value,
-        bytes memory data,
-        address tokenAddress,
-        uint256 tokenId
-    ) public pure returns (bytes32) {
-        return keccak256(abi.encode(to, value, data, tokenAddress, tokenId));
-    }
 }

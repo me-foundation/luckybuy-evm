@@ -47,7 +47,12 @@ contract FulfillTest is Test {
     address admin = address(0x1);
 
     address cosigner = 0xE052c9CFe22B5974DC821cBa907F1DAaC7979c94;
+    address user2 = 0x094F4431AFd206073476B4300D3a7cbC76D39D17;
 
+    bytes32 user2CommitDigest =
+        hex"747551b4e2c0604b8c40cd8e6f2b9ade160468c1036c7f6034ba23c7d8100f68";
+    bytes user2Signature =
+        hex"c711eb77e4716dad802c2ac67b1e61593e1a04ed5222d4dd88ce5f5227415b7e54e55f973781131fad176a02d9d13b49ccd6e6454a2fc79914a7d743b394197b1b";
     // cosigner-lib signature and digest
 
     bytes fail_signature =
@@ -109,6 +114,7 @@ contract FulfillTest is Test {
             luckyBuy = new MockLuckyBuy();
             vm.deal(admin, 100 ether);
             vm.deal(address(this), 100 ether);
+            vm.deal(user2, 100 ether);
             // Add a cosigner for testing
             luckyBuy.addCosigner(cosigner);
             vm.stopPrank();
@@ -276,6 +282,114 @@ contract FulfillTest is Test {
         console.log(luckyBuy.rng(signature));
     }
 
+    function test_end_to_end_success_order_fails() public {
+        // Skip the test entirely if we don't have an RPC URL
+        if (!shouldRunTests) {
+            console.log("Test skipped: MAINNET_RPC_URL not defined");
+            return;
+        }
+
+        (bool success, ) = address(luckyBuy).call{value: FUND_AMOUNT}("");
+        assertEq(success, true);
+
+        bytes32 orderHash = luckyBuy.hashOrder(
+            TARGET,
+            REWARD,
+            DATA,
+            TOKEN,
+            TOKEN_ID
+        );
+
+        assertEq(orderHash, TypescriptOrderHash);
+
+        // backend builds the commit data off chain. The user should technically choose the cosigner or we could be accused of trying random cosigners until we find one that benefits us.
+        uint256 seed = 12345; // User provides this data
+
+        // User submits the commit data from the back end with their payment to the contract
+        vm.expectEmit(true, true, true, false);
+        emit Commit(
+            RECEIVER, // indexed sender
+            0, // indexed commitId (first commit, so ID is 0)
+            RECEIVER, // indexed receiver
+            cosigner, // cosigner
+            seed, // seed (12345)
+            0, // counter (first commit, so counter is 0)
+            orderHash, // orderHash
+            COMMIT_AMOUNT, // amount
+            REWARD // reward
+        );
+        vm.prank(RECEIVER);
+        luckyBuy.commit{value: COMMIT_AMOUNT}(
+            RECEIVER,
+            cosigner,
+            seed,
+            orderHash,
+            REWARD
+        );
+
+        vm.prank(user2);
+        luckyBuy.commit{value: COMMIT_AMOUNT}(
+            user2,
+            cosigner,
+            seed,
+            orderHash,
+            REWARD
+        );
+
+        (
+            uint256 id,
+            address storedReceiver,
+            address storedCosigner,
+            uint256 storedSeed,
+            uint256 storedCounter,
+            bytes32 storedOrderHash,
+            uint256 storedAmount,
+            uint256 storedReward
+        ) = luckyBuy.luckyBuys(1);
+
+        console.log("User2 Commit Data:");
+        console.log("ID:", id);
+        console.log("Receiver:", storedReceiver);
+        console.log("Cosigner:", storedCosigner);
+        console.log("Seed:", storedSeed);
+        console.log("Counter:", storedCounter);
+        console.logBytes32(storedOrderHash);
+        console.log("Amount:", storedAmount);
+        console.log("Reward:", storedReward);
+
+        assertEq(
+            nft.ownerOf(TOKEN_ID),
+            0x0dB2536A038F68A2c4D5f7428a98299cf566A59a // on chain owner at the time of the forks
+        );
+
+        // We have created 2 commits, each with 100% chance of success COMMIT_AMOUNT = REWARD.
+        assertEq(address(luckyBuy).balance, FUND_AMOUNT + (REWARD * 2));
+
+        // fulfill the order
+        luckyBuy.fulfill(0, TARGET, DATA, REWARD, TOKEN, TOKEN_ID, signature);
+
+        assertEq(nft.ownerOf(TOKEN_ID), RECEIVER);
+
+        assertEq(address(luckyBuy).balance, FUND_AMOUNT + REWARD);
+
+        // This will fulfill but it will transfer eth.
+        luckyBuy.fulfill(
+            1,
+            TARGET,
+            DATA, // Technically this is the other data, effectively it is the same thing here.
+            REWARD,
+            TOKEN,
+            TOKEN_ID,
+            user2Signature
+        );
+
+        // check the balance of the contract
+        assertEq(address(luckyBuy).balance, FUND_AMOUNT);
+
+        console.log(address(luckyBuy).balance);
+        console.log(luckyBuy.rng(signature));
+    }
+
     function test_end_to_end_fail() public {
         // Skip the test entirely if we don't have an RPC URL
         if (!shouldRunTests) {
@@ -336,6 +450,7 @@ contract FulfillTest is Test {
         assertEq(nft.ownerOf(TOKEN_ID), currentOwner);
         assertEq(address(luckyBuy).balance, balance + FAIL_COMMIT_AMOUNT);
         assertEq(luckyBuy.isFulfilled(0), true);
+
         console.log(luckyBuy.rng(signature));
     }
 

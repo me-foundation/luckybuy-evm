@@ -10,7 +10,7 @@
   "scripts": {
     "build": "forge build",
     "test": "forge test",
-    "coverage": "forge coverage --report lcov && genhtml lcov.info --branch-coverage --output-dir coverage --ignore-errors inconsistent,mismatch,category"
+    "coverage": "forge coverage --report lcov --ir-minimum && genhtml lcov.info --branch-coverage --output-dir coverage --ignore-errors inconsistent,mismatch,category"
   },
   "author": "",
   "license": "ISC",
