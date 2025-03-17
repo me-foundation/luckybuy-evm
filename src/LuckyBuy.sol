@@ -78,6 +78,7 @@ contract LuckyBuy is
         if (receiver_ == address(0)) revert InvalidReceiver();
         if (reward_ > maxReward) revert InvalidReward();
         if (msg.value > reward_) revert InvalidReward();
+        if (reward_ == 0) revert InvalidReward();
 
         if ((msg.value * BASE_POINTS) / reward_ > BASE_POINTS)
             revert InvalidAmount();
