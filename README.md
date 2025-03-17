@@ -1,39 +1,173 @@
-# <h1 align="center"> Forge Template </h1>
+# LuckyBuy EVM Contracts
 
-**Template repository for getting started quickly with Foundry projects**
+LuckyBuy is a decentralized protocol that enables probabilistic NFT purchases. Users can commit a fraction of an NFT's price for a proportional chance to win the NFT. If they win, they receive the NFT at a discount. If they don't win, they keep their committed amount.
 
-![Github Actions](https://github.com/foundry-rs/forge-template/workflows/CI/badge.svg)
+## Overview
 
-## Getting Started
+The protocol works in three steps:
 
-Click "Use this template" on [GitHub](https://github.com/foundry-rs/forge-template) to create a new repository with this repo as the initial state.
+1. **Commit**: Users commit ETH with a proportional chance to win (e.g., commit 0.1 ETH on a 1 ETH NFT for a 10% chance to win)
+2. **Verify**: Trusted cosigners verify and sign valid commits
+3. **Fulfill**: The protocol attempts to purchase the NFT if the user wins, or returns the ETH if they lose
 
-Or, if your repo already exists, run:
-```sh
-forge init
-forge build
-forge test
-```
+### Key Features
 
-## Writing your first test
+- Trustless probability calculation based on commit amount
+- Secure random number generation using signature-based PRNG
+- Support for any NFT marketplace that accepts Off Chain Orders
+- Fallback ETH transfer if NFT purchase fails
+- Multi-cosigner support for redundancy
 
-All you need is to `import forge-std/Test.sol` and then inherit it from your test contract. Forge-std's Test contract comes with a pre-instatiated [cheatcodes environment](https://book.getfoundry.sh/cheatcodes/), the `vm`. It also has support for [ds-test](https://book.getfoundry.sh/reference/ds-test.html)-style logs and assertions. Finally, it supports Hardhat's [console.log](https://github.com/brockelmore/forge-std/blob/master/src/console.sol). The logging functionalities require `-vvvv`.
+## Architecture
 
-```solidity
-pragma solidity 0.8.10;
+The system consists of three main components:
 
-import "forge-std/Test.sol";
+- **LuckyBuy.sol**: Core contract handling commits, verification, and fulfillment
+- **SignaturePRNG.sol**: Secure random number generation using CRC32 and signatures
+- **SignatureVerifier.sol**: EIP-712 compliant signature verification
 
-contract ContractTest is Test {
-    function testExample() public {
-        vm.roll(100);
-        console.log(1);
-        emit log("hi");
-        assertTrue(true);
-    }
-}
-```
+### Security Features
+
+- EIP-712 structured data signing
+- Unbiased random number generation
+- Access control for admin functions
+- Atomic execution of NFT purchases
+- Protected against signature malleability
 
 ## Development
 
-This project uses [Foundry](https://getfoundry.sh). See the [book](https://book.getfoundry.sh/getting-started/installation.html) for instructions on how to install and use Foundry.
+### Prerequisites
+
+- [Foundry](https://book.getfoundry.sh/getting-started/installation)
+- Node.js and npm
+- Ethereum RPC URL (for forked tests)
+
+### Setup
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/your-org/luckybuy-evm.git
+cd luckybuy-evm
+```
+
+2. Install dependencies:
+
+```bash
+forge install
+npm install
+```
+
+3. Set up environment:
+
+```bash
+cp .env.example .env
+# Add your RPC URL to .env
+```
+
+### Testing
+
+Run the test suite:
+
+```bash
+forge test
+```
+
+For detailed gas reports:
+
+```bash
+forge test --gas-report
+```
+
+For fork testing (requires RPC URL):
+
+```bash
+forge test --fork-url $MAINNET_RPC_URL
+```
+
+### Deployment
+
+1. Set required environment variables:
+
+```bash
+export PRIVATE_KEY=your_private_key
+export RPC_URL=your_rpc_url
+```
+
+2. Deploy:
+
+```bash
+forge script script/Deploy.s.sol --rpc-url $RPC_URL --broadcast
+```
+
+## Usage
+
+### Making a Commit
+
+1. Calculate the order hash for the NFT purchase:
+
+```solidity
+bytes32 orderHash = luckyBuy.hashOrder(
+    target,
+    reward,
+    data,
+    tokenAddress,
+    tokenId
+);
+```
+
+2. Submit a commit:
+
+```solidity
+luckyBuy.commit{value: amount}(
+    receiver,
+    cosigner,
+    seed,
+    orderHash,
+    reward
+);
+```
+
+### Fulfilling Orders
+
+Cosigners monitor commit events and fulfill valid commits:
+
+```solidity
+luckyBuy.fulfill(
+    commitId,
+    orderTo,
+    orderData,
+    orderAmount,
+    token,
+    tokenId,
+    signature
+);
+```
+
+## Administration
+
+### Managing Cosigners
+
+Add a cosigner:
+
+```solidity
+luckyBuy.addCosigner(cosignerAddress);
+```
+
+Remove a cosigner:
+
+```solidity
+luckyBuy.removeCosigner(cosignerAddress);
+```
+
+### Treasury Management
+
+Set maximum reward:
+
+```solidity
+luckyBuy.setMaxReward(newMaxReward);
+```
+
+## License
+
+This project is licensed under the Unlicense - see the [LICENSE](LICENSE) file for details.

@@ -3,11 +3,11 @@ pragma solidity 0.8.28;
 
 import "./common/CRC32.sol";
 
-/// @title SignaturePRNG
+/// @title PRNG
 /// @notice A contract that provides pseudo-random number generation based on signatures
 /// @dev Inherits from CRC32 for hash calculation. Uses a combination of keccak256 and CRC32
 /// to generate random numbers within a specified range
-contract SignaturePRNG is CRC32 {
+contract PRNG is CRC32 {
     /// @notice Base points for percentage calculations (100.00%)
     uint256 public constant BASE_POINTS = 10000;
 
