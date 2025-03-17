@@ -455,12 +455,20 @@ contract FulfillTest is Test {
     }
 
     function testhashDataView() public {
+        if (!shouldRunTests) {
+            console.log("Test skipped: MAINNET_RPC_URL not defined");
+            return;
+        }
         console.logBytes32(
             luckyBuy.hashOrder(TARGET, REWARD, DATA, TOKEN, TOKEN_ID)
         );
     }
 
     function test_hash_components() public {
+        if (!shouldRunTests) {
+            console.log("Test skipped: MAINNET_RPC_URL not defined");
+            return;
+        }
         bytes32 orderHash2 = luckyBuy.hashOrder(
             TARGET,
             REWARD,
@@ -522,6 +530,10 @@ contract FulfillTest is Test {
     }
 
     function test_final_digest() public {
+        if (!shouldRunTests) {
+            console.log("Test skipped: MAINNET_RPC_URL not defined");
+            return;
+        }
         bytes32 orderHash2 = luckyBuy.hashOrder(
             TARGET,
             REWARD,
