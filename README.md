@@ -171,3 +171,7 @@ luckyBuy.setMaxReward(newMaxReward);
 ## License
 
 This project is licensed under the Unlicense - see the [LICENSE](LICENSE) file for details.
+
+## Improvements
+
+The fulfillment could whitelist the marketplace addresses that are allowed to be used. This would greatly reduce the risk of accidental misuse and restrict arbitrary contract calls.

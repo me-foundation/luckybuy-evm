@@ -133,7 +133,7 @@ contract LuckyBuy is
 
     /// @notice Fulfills a commit with the result of the random number generation
     /// @param commitId_ ID of the commit to fulfill
-    /// @param orderTo_ Address where the order should be executed
+    /// @param marketplace_ Address where the order should be executed
     /// @param orderData_ Calldata for the order execution
     /// @param orderAmount_ Amount of ETH to send with the order
     /// @param token_ Address of the token being transferred (zero address for ETH)
@@ -142,7 +142,7 @@ contract LuckyBuy is
     /// @dev Emits a Fulfillment event on success
     function fulfill(
         uint256 commitId_,
-        address orderTo_,
+        address marketplace_,
         bytes calldata orderData_,
         uint256 orderAmount_,
         address token_,
@@ -164,7 +164,7 @@ contract LuckyBuy is
         // validate the order hash
         if (
             commitData.orderHash !=
-            hashOrder(orderTo_, orderAmount_, orderData_, token_, tokenId_)
+            hashOrder(marketplace_, orderAmount_, orderData_, token_, tokenId_)
         ) revert InvalidOrderHash();
 
         // validate the reward amount
@@ -183,7 +183,7 @@ contract LuckyBuy is
         if (win) {
             _handleWin(
                 commitData,
-                orderTo_,
+                marketplace_,
                 orderData_,
                 orderAmount_,
                 rng,
@@ -210,7 +210,7 @@ contract LuckyBuy is
 
     function _handleWin(
         CommitData memory commitData,
-        address orderTo_,
+        address marketplace_,
         bytes calldata orderData_,
         uint256 orderAmount_,
         uint256 rng_,
@@ -222,7 +222,7 @@ contract LuckyBuy is
         balance -= orderAmount_;
 
         // execute the market data to transfer the nft
-        bool success = _fulfillOrder(orderTo_, orderData_, orderAmount_);
+        bool success = _fulfillOrder(marketplace_, orderData_, orderAmount_);
         if (success) {
             // emit a success transfer for the nft
             emit Fulfillment(
