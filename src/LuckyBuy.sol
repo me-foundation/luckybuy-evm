@@ -182,7 +182,7 @@ contract LuckyBuy is
                     win,
                     address(0),
                     0,
-                    orderAmount_,
+                    commitData.amount,
                     commitData.receiver
                 );
             }
