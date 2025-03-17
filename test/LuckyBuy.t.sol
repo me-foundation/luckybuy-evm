@@ -28,10 +28,13 @@ contract TestLuckyBuyCommit is Test {
         uint256 reward
     );
 
+    event MaxRewardUpdated(uint256 oldMaxReward, uint256 newMaxReward);
+
     function setUp() public {
         vm.startPrank(admin);
         luckyBuy = new LuckyBuy();
         vm.deal(admin, 100 ether);
+        vm.deal(receiver, 100 ether);
         vm.deal(address(this), 100 ether);
         // Add a cosigner for testing
         luckyBuy.addCosigner(cosigner);
@@ -533,6 +536,158 @@ contract TestLuckyBuyCommit is Test {
             seed,
             orderHash,
             1 ether // reward equal to msg.value
+        );
+
+        vm.stopPrank();
+    }
+
+    function testPauseAndUnpause() public {
+        vm.startPrank(admin);
+        luckyBuy.pause();
+        vm.stopPrank();
+
+        assertEq(luckyBuy.paused(), true);
+
+        vm.expectRevert();
+        luckyBuy.pause();
+
+        vm.startPrank(admin);
+        luckyBuy.unpause();
+        vm.stopPrank();
+
+        vm.expectRevert();
+        luckyBuy.unpause();
+
+        assertEq(luckyBuy.paused(), false);
+    }
+
+    function testCommitWhenPaused() public {
+        vm.startPrank(admin);
+        luckyBuy.pause();
+        vm.stopPrank();
+
+        vm.expectRevert();
+        luckyBuy.commit{value: amount}(
+            receiver,
+            cosigner,
+            seed,
+            orderHash,
+            reward
+        );
+    }
+
+    function testFulfillWhenPaused() public {
+        // First create a valid commit
+        vm.startPrank(receiver);
+        luckyBuy.commit{value: amount}(
+            receiver,
+            cosigner,
+            seed,
+            orderHash,
+            reward
+        );
+        vm.stopPrank();
+
+        // Then pause and try to fulfill
+        vm.startPrank(admin);
+        luckyBuy.pause();
+        vm.stopPrank();
+
+        vm.expectRevert();
+        luckyBuy.fulfill(
+            0,
+            receiver,
+            new bytes(0),
+            reward,
+            address(0),
+            0,
+            new bytes(0)
+        );
+    }
+
+    function testMaxRewardUpdate() public {
+        vm.startPrank(admin);
+        uint256 newMaxReward = 50 ether;
+
+        vm.expectEmit(true, true, true, false);
+        emit MaxRewardUpdated(reward, newMaxReward);
+
+        luckyBuy.setMaxReward(newMaxReward);
+        assertEq(luckyBuy.maxReward(), newMaxReward);
+        vm.stopPrank();
+    }
+
+    function testCommitWithRewardBelowMinimum() public {
+        uint256 belowMinReward = luckyBuy.BASE_POINTS() - 1;
+
+        vm.expectRevert(LuckyBuy.InvalidReward.selector);
+        luckyBuy.commit{value: amount}(
+            receiver,
+            cosigner,
+            seed,
+            orderHash,
+            belowMinReward
+        );
+    }
+
+    function testTreasuryBalanceManagement() public {
+        uint256 initialBalance = address(luckyBuy).balance;
+        uint256 depositAmount = 5 ether;
+
+        // Test direct ETH transfer
+        (bool success, ) = address(luckyBuy).call{value: depositAmount}("");
+        assertTrue(success);
+        assertEq(luckyBuy.balance(), initialBalance + depositAmount);
+
+        // Test balance update during commit
+        vm.startPrank(receiver);
+        luckyBuy.commit{value: amount}(
+            receiver,
+            cosigner,
+            seed,
+            orderHash,
+            reward
+        );
+        vm.stopPrank();
+
+        assertEq(luckyBuy.balance(), initialBalance + depositAmount);
+    }
+
+    function testCommitId() public {
+        vm.startPrank(user);
+        vm.deal(user, amount);
+
+        uint256 commitId = luckyBuy.commit{value: amount}(
+            receiver,
+            cosigner,
+            seed,
+            orderHash,
+            reward
+        );
+
+        assertEq(luckyBuy.luckyBuyCount(receiver), 1);
+
+        vm.stopPrank();
+
+        assertEq(commitId, 0);
+
+        (uint256 id, , , , , , , ) = luckyBuy.luckyBuys(commitId);
+        assertEq(id, commitId);
+    }
+
+    function testInvalidAmountOverOdds() public {
+        vm.startPrank(user);
+        vm.deal(user, 2 ether);
+
+        // Try to commit with amount that would result in >100% odds
+        // If amount * BASE_POINTS / reward > BASE_POINTS, it should revert
+        vm.expectRevert(LuckyBuy.InvalidAmount.selector);
+        luckyBuy.commit{value: 2 ether}(
+            receiver,
+            cosigner,
+            seed,
+            orderHash,
+            1 ether // This would result in 200% odds
         );
 
         vm.stopPrank();

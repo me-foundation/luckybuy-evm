@@ -93,9 +93,9 @@ contract LuckyBuy is
         if (cosigner_ == address(0)) revert InvalidCosigner();
         if (receiver_ == address(0)) revert InvalidReceiver();
         if (reward_ > maxReward) revert InvalidReward();
-        if (msg.value > reward_) revert InvalidReward();
-        if (reward_ == 0) revert InvalidReward();
         if (reward_ < minReward) revert InvalidReward();
+        if (msg.value > reward_) revert InvalidAmount();
+        if (reward_ == 0) revert InvalidReward();
 
         if ((msg.value * BASE_POINTS) / reward_ > BASE_POINTS)
             revert InvalidAmount();
@@ -292,6 +292,16 @@ contract LuckyBuy is
     /// @param amount Amount of ETH to deposit
     function _depositTreasury(uint256 amount) internal {
         balance += amount;
+    }
+
+    /// @notice Pauses the contract
+    /// @dev Only callable by admin role
+    function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _pause();
+    }
+
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
     }
 
     /// @notice Handles receiving ETH
