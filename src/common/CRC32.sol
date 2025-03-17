@@ -310,7 +310,7 @@ contract CRC32 {
      * @param data The input byte array to calculate the CRC32 hash for
      * @return The 32-bit CRC value as a uint32
      */
-    function crc32(bytes memory data) public view returns (uint32) {
+    function crc32(bytes calldata data) public view returns (uint32) {
         unchecked {
             // Initialize CRC with all 1's (0xFFFFFFFF) as per the standard
             uint256 crc = 0xFFFFFFFF;
@@ -332,12 +332,18 @@ contract CRC32 {
     }
 
     function crc32(bytes32 sigHash) public view returns (uint32) {
-        bytes memory sigHashBytes = new bytes(32);
-        for (uint i = 0; i < 32; i++) {
-            sigHashBytes[i] = sigHash[i];
-        }
+        unchecked {
+            uint256 crc = 0xFFFFFFFF;
 
-        return crc32(sigHashBytes);
+            // Process each byte in the bytes32 value directly
+            for (uint256 i = 0; i < 32; i++) {
+                // Extract byte at position i
+                uint8 b = uint8(sigHash[i]);
+                crc = (crc >> 8) ^ crcTable[(crc ^ uint256(b)) & 0xFF];
+            }
+
+            return uint32(crc ^ 0xFFFFFFFF);
+        }
     }
 
     /**
@@ -347,7 +353,7 @@ contract CRC32 {
      * @param input The input string to calculate the CRC32 hash for
      * @return The 32-bit CRC value as a uint32
      */
-    function crc32(string memory input) public view returns (uint32) {
+    function crc32(string calldata input) public view returns (uint32) {
         return crc32(bytes(input));
     }
 }
