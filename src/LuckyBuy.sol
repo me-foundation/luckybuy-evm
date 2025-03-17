@@ -19,6 +19,7 @@ contract LuckyBuy is
 
     uint256 public balance;
     uint256 public maxReward = 30 ether;
+    uint256 public constant minReward = BASE_POINTS;
 
     mapping(address cosigner => bool active) public isCosigner;
     mapping(address receiver => uint256 counter) public luckyBuyCount;
@@ -35,7 +36,6 @@ contract LuckyBuy is
         uint256 amount,
         uint256 reward
     );
-
     event CosignerAdded(address indexed cosigner);
     event CosignerRemoved(address indexed cosigner);
     event Fulfillment(
@@ -49,6 +49,7 @@ contract LuckyBuy is
         uint256 amount,
         address receiver
     );
+    event MaxRewardUpdated(uint256 oldMaxReward, uint256 newMaxReward);
 
     error AlreadyCosigner();
     error AlreadyFulfilled();
@@ -85,7 +86,7 @@ contract LuckyBuy is
         uint256 seed_,
         bytes32 orderHash_,
         uint256 reward_
-    ) external payable returns (uint256) {
+    ) external payable whenNotPaused returns (uint256) {
         if (msg.value == 0) revert InvalidAmount();
         if (!isCosigner[cosigner_]) revert InvalidCosigner();
         if (cosigner_ == address(0)) revert InvalidCosigner();
@@ -93,6 +94,7 @@ contract LuckyBuy is
         if (reward_ > maxReward) revert InvalidReward();
         if (msg.value > reward_) revert InvalidReward();
         if (reward_ == 0) revert InvalidReward();
+        if (reward_ < minReward) revert InvalidReward();
 
         if ((msg.value * BASE_POINTS) / reward_ > BASE_POINTS)
             revert InvalidAmount();
@@ -145,7 +147,7 @@ contract LuckyBuy is
         address token_,
         uint256 tokenId_,
         bytes calldata signature_
-    ) external payable nonReentrant {
+    ) external payable nonReentrant whenNotPaused {
         // validate tx
         if (msg.value > 0) _depositTreasury(msg.value);
         if (orderAmount_ > balance) revert InsufficientBalance();
@@ -172,7 +174,6 @@ contract LuckyBuy is
         if (cosigner != commitData.cosigner) revert InvalidCosigner();
         if (!isCosigner[cosigner]) revert InvalidCosigner();
 
-        // TODO: check win conditions
         // calculate the odds in base points
         uint256 odds = _calculateOdds(commitData.amount, commitData.reward);
         uint256 rng = _rng(signature_);
@@ -258,6 +259,7 @@ contract LuckyBuy is
         uint256 maxReward_
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         maxReward = maxReward_;
+        emit MaxRewardUpdated(maxReward, maxReward_);
     }
 
     /// @notice Deposits ETH into the treasury
@@ -281,7 +283,7 @@ contract LuckyBuy is
     function _calculateOdds(
         uint256 amount,
         uint256 reward
-    ) internal returns (uint256) {
+    ) internal pure returns (uint256) {
         return (amount * 10000) / reward;
     }
 
