@@ -70,12 +70,10 @@ contract TestCRC32 is Test {
             // Calculate CRC32
             uint32 crcValue = crc32.crc32(input);
 
-            // Format as CSV row: index,input,decimal,hex
+            // Format as CSV row: index, decimal, hex
             string memory row = string(
                 abi.encodePacked(
                     vm.toString(i),
-                    ",",
-                    input,
                     ",",
                     vm.toString(uint256(crcValue)),
                     ",",
