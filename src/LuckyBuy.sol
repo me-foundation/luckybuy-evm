@@ -236,8 +236,8 @@ contract LuckyBuy is
                 commitData.receiver
             );
         } else {
-            // emit a success transfer for eth
-            payable(commitData.receiver).transfer(orderAmount_);
+            // Order failed, transfer the eth back to the receiver
+            payable(commitData.receiver).transfer(commitData.amount);
             emit Fulfillment(
                 msg.sender,
                 commitData.id,
@@ -246,7 +246,7 @@ contract LuckyBuy is
                 win_,
                 address(0),
                 0,
-                orderAmount_,
+                commitData.amount,
                 commitData.receiver
             );
         }
