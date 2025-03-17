@@ -180,38 +180,17 @@ contract LuckyBuy is
         bool win = rng < odds;
 
         if (win) {
-            // If the user wins, we need to transfer the NFT to the receiver
-            balance -= orderAmount_;
-
-            bool success = _fulfillOrder(orderTo_, orderData_, orderAmount_);
-            if (success) {
-                // emit a success transfer for the nft
-                emit Fulfillment(
-                    msg.sender,
-                    commitId_,
-                    rng,
-                    odds,
-                    win,
-                    token_,
-                    tokenId_,
-                    orderAmount_,
-                    commitData.receiver
-                );
-            } else {
-                // emit a success transfer for eth
-                payable(commitData.receiver).transfer(orderAmount_);
-                emit Fulfillment(
-                    msg.sender,
-                    commitId_,
-                    rng,
-                    odds,
-                    win,
-                    address(0),
-                    0,
-                    orderAmount_,
-                    commitData.receiver
-                );
-            }
+            _handleWin(
+                commitData,
+                orderTo_,
+                orderData_,
+                orderAmount_,
+                rng,
+                odds,
+                win,
+                token_,
+                tokenId_
+            );
         } else {
             // emit the failure
             emit Fulfillment(
@@ -223,6 +202,51 @@ contract LuckyBuy is
                 address(0),
                 0,
                 0,
+                commitData.receiver
+            );
+        }
+    }
+
+    function _handleWin(
+        CommitData memory commitData,
+        address orderTo_,
+        bytes calldata orderData_,
+        uint256 orderAmount_,
+        uint256 rng_,
+        uint256 odds_,
+        bool win_,
+        address token_,
+        uint256 tokenId_
+    ) internal {
+        balance -= orderAmount_;
+
+        // execute the market data to transfer the nft
+        bool success = _fulfillOrder(orderTo_, orderData_, orderAmount_);
+        if (success) {
+            // emit a success transfer for the nft
+            emit Fulfillment(
+                msg.sender,
+                commitData.id,
+                rng_,
+                odds_,
+                win_,
+                token_,
+                tokenId_,
+                orderAmount_,
+                commitData.receiver
+            );
+        } else {
+            // emit a success transfer for eth
+            payable(commitData.receiver).transfer(orderAmount_);
+            emit Fulfillment(
+                msg.sender,
+                commitData.id,
+                rng_,
+                odds_,
+                win_,
+                address(0),
+                0,
+                orderAmount_,
                 commitData.receiver
             );
         }
