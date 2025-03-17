@@ -23,7 +23,7 @@ The protocol works in three steps:
 The system consists of three main components:
 
 - **LuckyBuy.sol**: Core contract handling commits, verification, and fulfillment
-- **SignaturePRNG.sol**: Secure random number generation using CRC32 and signatures
+- **PRNG.sol**: Secure random number generation using CRC32 and signatures
 - **SignatureVerifier.sol**: EIP-712 compliant signature verification
 
 ### Security Features

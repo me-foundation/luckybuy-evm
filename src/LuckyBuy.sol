@@ -7,12 +7,13 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./common/MEAccessControl.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
-import "./SignaturePRNG.sol";
+import "./PRNG.sol";
+
 contract LuckyBuy is
     MEAccessControl,
     Pausable,
     SignatureVerifier,
-    SignaturePRNG,
+    PRNG,
     ReentrancyGuard
 {
     CommitData[] public luckyBuys;

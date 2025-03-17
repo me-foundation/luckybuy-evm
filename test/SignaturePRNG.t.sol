@@ -2,9 +2,9 @@
 pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
-import "src/SignaturePRNG.sol";
+import "src/PRNG.sol";
 
-contract MockSignaturePRNG is SignaturePRNG {
+contract MockPRNG is PRNG {
     function exposed_rng(
         bytes calldata signature
     ) public view returns (uint32) {
@@ -12,8 +12,8 @@ contract MockSignaturePRNG is SignaturePRNG {
     }
 }
 
-contract TestSignaturePRNG is Test {
-    MockSignaturePRNG prng;
+contract TestPRNG is Test {
+    MockPRNG prng;
 
     string constant OUTPUT_100K = "./rng_100k.csv";
 
@@ -23,7 +23,7 @@ contract TestSignaturePRNG is Test {
     bytes sampleSignatureIdentical;
 
     function setUp() public {
-        prng = new MockSignaturePRNG();
+        prng = new MockPRNG();
 
         // Create some sample signatures for testing
         sampleSignature1 = hex"09a0f1a38d41262e87c6bfc526c9a415b94ca4126e6cecba371a0efacf3db47c4ec97521c9ccc9396dcdf8e664ea57d04a1caa956c53180e2330b61908bacff61b";
