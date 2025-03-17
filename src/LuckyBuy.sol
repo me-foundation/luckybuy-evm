@@ -173,7 +173,7 @@ contract LuckyBuy is
                 );
             } else {
                 // emit a success transfer for eth
-                payable(commitData.receiver).transfer(orderAmount_);
+                payable(commitData.receiver).transfer(commitData.amount);
                 emit Fulfillment(
                     msg.sender,
                     commitId_,
