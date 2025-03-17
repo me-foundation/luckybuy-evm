@@ -160,8 +160,8 @@ contract TestLuckyBuyCommit is Test {
         vm.startPrank(user);
         vm.deal(user, amount);
 
-        // Act & Assert - Should revert with InvalidCoSigner
-        vm.expectRevert(LuckyBuy.InvalidCoSigner.selector);
+        // Act & Assert - Should revert with InvalidCosigner
+        vm.expectRevert(LuckyBuy.InvalidCosigner.selector);
         luckyBuy.commit{value: amount}(
             receiver,
             invalidCosigner,
@@ -197,7 +197,7 @@ contract TestLuckyBuyCommit is Test {
         vm.startPrank(user);
         vm.deal(user, amount);
 
-        vm.expectRevert(LuckyBuy.InvalidCoSigner.selector);
+        vm.expectRevert(LuckyBuy.InvalidCosigner.selector);
         luckyBuy.commit{value: amount}(
             receiver,
             cosigner,

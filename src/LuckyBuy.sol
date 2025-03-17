@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import "./common/SignatureVerifier.sol";
 
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./common/MEAccessControl.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
@@ -11,7 +12,8 @@ contract LuckyBuy is
     MEAccessControl,
     Pausable,
     SignatureVerifier,
-    SignaturePRNG
+    SignaturePRNG,
+    ReentrancyGuard
 {
     CommitData[] public luckyBuys;
 
@@ -34,8 +36,8 @@ contract LuckyBuy is
         uint256 reward
     );
 
-    event CoSignerAdded(address indexed cosigner);
-    event CoSignerRemoved(address indexed cosigner);
+    event CosignerAdded(address indexed cosigner);
+    event CosignerRemoved(address indexed cosigner);
     event Fulfillment(
         address indexed sender,
         uint256 indexed commitId,
@@ -48,16 +50,20 @@ contract LuckyBuy is
         address receiver
     );
 
+    error AlreadyCosigner();
     error AlreadyFulfilled();
     error InsufficientBalance();
     error InvalidAmount();
-    error InvalidCoSigner();
+    error InvalidCosigner();
     error InvalidOrderHash();
     error InvalidReceiver();
     error InvalidReward();
     error FulfillmentFailed();
     error InvalidCommitId();
 
+    /// @notice Constructor initializes the contract and handles any pre-existing balance
+    /// @dev Sets up EIP712 domain separator and deposits any ETH sent during deployment /// @notice Constructor initializes the contract and handles any pre-existing balance
+    /// @dev Sets up EIP712 domain separator and deposits any ETH sent during deployment
     constructor() MEAccessControl() SignatureVerifier("LuckyBuy", "1") {
         uint256 existingBalance = address(this).balance;
         if (existingBalance > 0) {
@@ -65,16 +71,24 @@ contract LuckyBuy is
         }
     }
 
+    /// @notice Allows a user to commit funds for a chance to win
+    /// @param receiver_ Address that will receive the NFT/ETH if won
+    /// @param cosigner_ Address of the authorized cosigner
+    /// @param seed_ Random seed for the commit
+    /// @param orderHash_ Hash of the order details
+    /// @param reward_ Amount of reward if won
+    /// @dev Emits a Commit event on success
+    /// @return commitId The ID of the created commit
     function commit(
         address receiver_,
         address cosigner_,
         uint256 seed_,
         bytes32 orderHash_,
         uint256 reward_
-    ) external payable {
+    ) external payable returns (uint256) {
         if (msg.value == 0) revert InvalidAmount();
-        if (!isCosigner[cosigner_]) revert InvalidCoSigner();
-        if (cosigner_ == address(0)) revert InvalidCoSigner();
+        if (!isCosigner[cosigner_]) revert InvalidCosigner();
+        if (cosigner_ == address(0)) revert InvalidCosigner();
         if (receiver_ == address(0)) revert InvalidReceiver();
         if (reward_ > maxReward) revert InvalidReward();
         if (msg.value > reward_) revert InvalidReward();
@@ -110,8 +124,19 @@ contract LuckyBuy is
             msg.value,
             reward_
         );
+
+        return commitId;
     }
 
+    /// @notice Fulfills a commit with the result of the random number generation
+    /// @param commitId_ ID of the commit to fulfill
+    /// @param orderTo_ Address where the order should be executed
+    /// @param orderData_ Calldata for the order execution
+    /// @param orderAmount_ Amount of ETH to send with the order
+    /// @param token_ Address of the token being transferred (zero address for ETH)
+    /// @param tokenId_ ID of the token if it's an NFT
+    /// @param signature_ Signature used for random number generation
+    /// @dev Emits a Fulfillment event on success
     function fulfill(
         uint256 commitId_,
         address orderTo_,
@@ -120,7 +145,7 @@ contract LuckyBuy is
         address token_,
         uint256 tokenId_,
         bytes calldata signature_
-    ) external payable {
+    ) external payable nonReentrant {
         // validate tx
         if (msg.value > 0) _depositTreasury(msg.value);
         if (orderAmount_ > balance) revert InsufficientBalance();
@@ -144,8 +169,8 @@ contract LuckyBuy is
 
         // hash commit, check signature
         address cosigner = verify(commitData, signature_);
-        if (cosigner != commitData.cosigner) revert InvalidCoSigner();
-        if (!isCosigner[cosigner]) revert InvalidCoSigner();
+        if (cosigner != commitData.cosigner) revert InvalidCosigner();
+        if (!isCosigner[cosigner]) revert InvalidCosigner();
 
         // TODO: check win conditions
         // calculate the odds in base points
@@ -202,6 +227,57 @@ contract LuckyBuy is
         }
     }
 
+    /// @notice Adds a new authorized cosigner
+    /// @param cosigner_ Address to add as cosigner
+    /// @dev Only callable by admin role
+    /// @dev Emits a CoSignerAdded event
+    function addCosigner(
+        address cosigner_
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (cosigner_ == address(0)) revert InvalidCosigner();
+        if (isCosigner[cosigner_]) revert AlreadyCosigner();
+        isCosigner[cosigner_] = true;
+        emit CosignerAdded(cosigner_);
+    }
+
+    /// @notice Removes an authorized cosigner
+    /// @param cosigner_ Address to remove as cosigner
+    /// @dev Only callable by admin role
+    /// @dev Emits a CoSignerRemoved event
+    function removeCosigner(
+        address cosigner_
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        isCosigner[cosigner_] = false;
+        emit CosignerRemoved(cosigner_);
+    }
+
+    /// @notice Sets the maximum allowed reward
+    /// @param maxReward_ New maximum reward value
+    /// @dev Only callable by admin role
+    function setMaxReward(
+        uint256 maxReward_
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        maxReward = maxReward_;
+    }
+
+    /// @notice Deposits ETH into the treasury
+    /// @dev Called internally when receiving ETH
+    /// @param amount Amount of ETH to deposit
+    function _depositTreasury(uint256 amount) internal {
+        balance += amount;
+    }
+
+    /// @notice Handles receiving ETH
+    /// @dev Required for contract to receive ETH
+    receive() external payable {
+        _depositTreasury(msg.value);
+    }
+
+    /// @notice Calculates the odds of winning based on amount and reward
+    /// @dev Internal function used in fulfill()
+    /// @param amount Amount committed
+    /// @param reward Potential reward
+    /// @return odds The calculated odds as a percentage (0-100)
     function _calculateOdds(
         uint256 amount,
         uint256 reward
@@ -209,39 +285,17 @@ contract LuckyBuy is
         return (amount * 10000) / reward;
     }
 
+    /// @notice Fulfills an order with the specified parameters
+    /// @dev Internal function called by fulfill()
+    /// @param to Address to send the transaction to
+    /// @param data Calldata for the transaction
+    /// @param amount Amount of ETH to send
+    /// @return success Whether the transaction was successful
     function _fulfillOrder(
-        address txTo_,
-        bytes calldata data_,
-        uint256 amount_
+        address to,
+        bytes calldata data,
+        uint256 amount
     ) internal returns (bool success) {
-        (success, ) = txTo_.call{value: amount_}(data_);
-    }
-
-    function addCosigner(
-        address cosigner_
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        isCosigner[cosigner_] = true;
-        emit CoSignerAdded(cosigner_);
-    }
-
-    function removeCosigner(
-        address cosigner_
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        isCosigner[cosigner_] = false;
-        emit CoSignerRemoved(cosigner_);
-    }
-
-    function setMaxReward(
-        uint256 maxReward_
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        maxReward = maxReward_;
-    }
-
-    function _depositTreasury(uint256 amount) internal {
-        balance += amount;
-    }
-
-    receive() external payable {
-        _depositTreasury(msg.value);
+        (success, ) = to.call{value: amount}(data);
     }
 }

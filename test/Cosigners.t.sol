@@ -13,8 +13,8 @@ contract TestLuckyBuyCosigners is Test {
     address cosigner2 = address(0x4);
 
     // Events for testing
-    event CoSignerAdded(address indexed cosigner);
-    event CoSignerRemoved(address indexed cosigner);
+    event CosignerAdded(address indexed cosigner);
+    event CosignerRemoved(address indexed cosigner);
 
     function setUp() public {
         vm.startPrank(admin);
@@ -28,7 +28,7 @@ contract TestLuckyBuyCosigners is Test {
 
         // Act & Assert - Check event emission
         vm.expectEmit(true, false, false, false);
-        emit CoSignerAdded(cosigner1);
+        emit CosignerAdded(cosigner1);
         luckyBuy.addCosigner(cosigner1);
 
         // Assert - Check state change
@@ -70,9 +70,7 @@ contract TestLuckyBuyCosigners is Test {
             "Cosigner should be active after first addition"
         );
 
-        // Act & Assert - Check event emission
-        vm.expectEmit(true, false, false, false);
-        emit CoSignerAdded(cosigner1);
+        vm.expectRevert(LuckyBuy.AlreadyCosigner.selector);
         luckyBuy.addCosigner(cosigner1);
 
         // Assert - Should still be active
@@ -116,18 +114,12 @@ contract TestLuckyBuyCosigners is Test {
     }
 
     function testAddZeroAddressAsCosigner() public {
-        // Arrange
         vm.startPrank(admin);
         address zeroAddress = address(0);
 
-        // Act
+        vm.expectRevert(LuckyBuy.InvalidCosigner.selector);
         luckyBuy.addCosigner(zeroAddress);
 
-        // Assert
-        assertTrue(
-            luckyBuy.isCosigner(zeroAddress),
-            "Zero address should be active as cosigner"
-        );
         vm.stopPrank();
     }
 
@@ -142,7 +134,7 @@ contract TestLuckyBuyCosigners is Test {
 
         // Act & Assert - Check event emission
         vm.expectEmit(true, false, false, false);
-        emit CoSignerRemoved(cosigner1);
+        emit CosignerRemoved(cosigner1);
         luckyBuy.removeCosigner(cosigner1);
 
         // Assert - Check state change
