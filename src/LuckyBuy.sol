@@ -27,6 +27,7 @@ contract LuckyBuy is
     mapping(address cosigner => bool active) public isCosigner;
     mapping(address receiver => uint256 counter) public luckyBuyCount;
     mapping(uint256 commitId => bool fulfilled) public isFulfilled;
+    mapping(uint256 commitId => uint256 fee) public feesPaid;
 
     event Commit(
         address indexed sender,
@@ -110,6 +111,11 @@ contract LuckyBuy is
         uint256 userCounter = luckyBuyCount[receiver_]++;
 
         uint256 amountWithoutFee = calculateContributionWithoutFee(msg.value);
+
+        uint256 fee = msg.value - amountWithoutFee;
+
+        balance += fee;
+        feesPaid[commitId] = fee;
 
         CommitData memory commitData = CommitData({
             id: commitId,
@@ -246,7 +252,15 @@ contract LuckyBuy is
             );
         } else {
             // Order failed, transfer the eth back to the receiver
-            payable(commitData.receiver).transfer(commitData.amount);
+            uint256 protocolFeesPaid = feesPaid[commitData.id];
+
+            if (protocolFeesPaid > balance) revert InsufficientBalance();
+
+            balance -= protocolFeesPaid;
+
+            uint256 returnAmount = commitData.amount + protocolFeesPaid;
+
+            payable(commitData.receiver).transfer(returnAmount);
             emit Fulfillment(
                 msg.sender,
                 commitData.id,
@@ -255,7 +269,7 @@ contract LuckyBuy is
                 win_,
                 address(0),
                 0,
-                commitData.amount,
+                returnAmount,
                 commitData.receiver
             );
         }
