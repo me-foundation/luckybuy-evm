@@ -109,6 +109,8 @@ contract LuckyBuy is
         uint256 commitId = luckyBuys.length;
         uint256 userCounter = luckyBuyCount[receiver_]++;
 
+        uint256 amountWithoutFee = calculateContributionWithoutFee(msg.value);
+
         CommitData memory commitData = CommitData({
             id: commitId,
             receiver: receiver_,
@@ -116,7 +118,7 @@ contract LuckyBuy is
             seed: seed_,
             counter: userCounter,
             orderHash: orderHash_,
-            amount: msg.value,
+            amount: amountWithoutFee,
             reward: reward_
         });
 
@@ -130,7 +132,7 @@ contract LuckyBuy is
             seed_,
             userCounter,
             orderHash_, // Relay tx properties: to, data, value
-            msg.value,
+            amountWithoutFee,
             reward_
         );
 
@@ -258,6 +260,19 @@ contract LuckyBuy is
             );
         }
     }
+
+    /// @notice Calculates contribution amount after removing fee
+    /// @param amount The original amount including fee
+    /// @return The contribution amount without the fee
+    /// @dev Uses formula: contribution = (amount * FEE_DENOMINATOR) / (FEE_DENOMINATOR + feePercent)
+    /// @dev This ensures fee isn't charged on the fee portion itself
+    function calculateContributionWithoutFee(
+        uint256 amount
+    ) public view returns (uint256) {
+        return (amount * BASE_POINTS) / (BASE_POINTS + protocolFee);
+    }
+
+    // ############ GETTERS & SETTERS ############
 
     /// @notice Adds a new authorized cosigner
     /// @param cosigner_ Address to add as cosigner
