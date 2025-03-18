@@ -736,4 +736,40 @@ contract TestLuckyBuyCommit is Test {
         uint256 fee = luckyBuy.calculateFee(amount);
         assertEq(fee, (amount * protocolFee) / luckyBuy.BASE_POINTS());
     }
+
+    function testCommitWithFee() public {
+        uint256 amount = 1 ether;
+        uint256 protocolFee = 100;
+
+        vm.startPrank(admin);
+        luckyBuy.setProtocolFee(protocolFee);
+        vm.stopPrank();
+
+        uint256 fee = luckyBuy.calculateFee(amount);
+        uint256 amountWithFee = amount + fee;
+
+        vm.startPrank(user);
+        vm.deal(user, amountWithFee);
+
+        luckyBuy.commit{value: amountWithFee}(
+            receiver,
+            cosigner,
+            seed,
+            orderHash,
+            reward
+        );
+
+        (
+            uint256 id,
+            ,
+            ,
+            ,
+            ,
+            ,
+            uint256 amountWithoutFee,
+            uint256 reward
+        ) = luckyBuy.luckyBuys(0);
+        assertEq(amountWithoutFee, amount);
+        assertEq(amountWithFee, address(luckyBuy).balance);
+    }
 }
