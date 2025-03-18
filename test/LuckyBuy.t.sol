@@ -693,6 +693,7 @@ contract TestLuckyBuyCommit is Test {
 
         vm.stopPrank();
     }
+<<<<<<< HEAD
 
     function testProtocolFee() public {
         vm.startPrank(admin);
@@ -772,4 +773,6 @@ contract TestLuckyBuyCommit is Test {
         assertEq(amountWithoutFee, amount);
         assertEq(amountWithFee, address(luckyBuy).balance);
     }
+=======
+>>>>>>> origin/develop
 }
