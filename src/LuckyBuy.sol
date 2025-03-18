@@ -275,6 +275,13 @@ contract LuckyBuy is
         }
     }
 
+    function withdraw(uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (amount > balance) revert InsufficientBalance();
+        payable(msg.sender).transfer(amount);
+        balance -= amount;
+        emit Withdrawal(msg.sender, amount);
+    }
+
     /// @notice Calculates contribution amount after removing fee
     /// @param amount The original amount including fee
     /// @return The contribution amount without the fee
