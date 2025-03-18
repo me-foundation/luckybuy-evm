@@ -21,6 +21,7 @@ contract LuckyBuy is
     uint256 public balance;
     uint256 public maxReward = 30 ether;
     uint256 public constant minReward = BASE_POINTS;
+    uint256 public constant protocolFee = 0;
 
     mapping(address cosigner => bool active) public isCosigner;
     mapping(address receiver => uint256 counter) public luckyBuyCount;
@@ -51,7 +52,7 @@ contract LuckyBuy is
         address receiver
     );
     event MaxRewardUpdated(uint256 oldMaxReward, uint256 newMaxReward);
-
+    event ProtocolFeeUpdated(uint256 oldProtocolFee, uint256 newProtocolFee);
     error AlreadyCosigner();
     error AlreadyFulfilled();
     error InsufficientBalance();
@@ -66,11 +67,15 @@ contract LuckyBuy is
     /// @notice Constructor initializes the contract and handles any pre-existing balance
     /// @dev Sets up EIP712 domain separator and deposits any ETH sent during deployment /// @notice Constructor initializes the contract and handles any pre-existing balance
     /// @dev Sets up EIP712 domain separator and deposits any ETH sent during deployment
-    constructor() MEAccessControl() SignatureVerifier("LuckyBuy", "1") {
+    constructor(
+        uint256 protocolFee_
+    ) MEAccessControl() SignatureVerifier("LuckyBuy", "1") {
         uint256 existingBalance = address(this).balance;
         if (existingBalance > 0) {
             _depositTreasury(existingBalance);
         }
+
+        _setProtocolFee(protocolFee_);
     }
 
     /// @notice Allows a user to commit funds for a chance to win
@@ -334,5 +339,16 @@ contract LuckyBuy is
         uint256 amount
     ) internal returns (bool success) {
         (success, ) = to.call{value: amount}(data);
+    }
+
+    function setProtocolFee(
+        uint256 protocolFee_
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setProtocolFee(protocolFee_);
+    }
+
+    function _setProtocolFee(uint256 protocolFee_) internal {
+        protocolFee = protocolFee_;
+        emit ProtocolFeeUpdated(protocolFee, protocolFee_);
     }
 }
