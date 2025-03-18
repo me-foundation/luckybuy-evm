@@ -20,8 +20,9 @@ contract LuckyBuy is
 
     uint256 public balance;
     uint256 public maxReward = 30 ether;
+    uint256 public protocolFee = 0;
+
     uint256 public constant minReward = BASE_POINTS;
-    uint256 public constant protocolFee = 0;
 
     mapping(address cosigner => bool active) public isCosigner;
     mapping(address receiver => uint256 counter) public luckyBuyCount;

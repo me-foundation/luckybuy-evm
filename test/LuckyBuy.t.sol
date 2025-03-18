@@ -10,6 +10,7 @@ contract TestLuckyBuyCommit is Test {
     address user = address(0x2);
     address receiver = address(0x3);
     address cosigner = address(0x4);
+    uint256 protocolFee = 0;
 
     uint256 seed = 12345;
     bytes32 orderHash = hex"1234";
@@ -32,7 +33,7 @@ contract TestLuckyBuyCommit is Test {
 
     function setUp() public {
         vm.startPrank(admin);
-        luckyBuy = new LuckyBuy();
+        luckyBuy = new LuckyBuy(protocolFee);
         vm.deal(admin, 100 ether);
         vm.deal(receiver, 100 ether);
         vm.deal(address(this), 100 ether);
@@ -507,7 +508,7 @@ contract TestLuckyBuyCommit is Test {
 
         // Deploy LuckyBuy from admin account
         vm.prank(admin);
-        LuckyBuy newLuckyBuy = new LuckyBuy();
+        LuckyBuy newLuckyBuy = new LuckyBuy(protocolFee);
 
         // Verify the deployment address matches prediction
         assertEq(
