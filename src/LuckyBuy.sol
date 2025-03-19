@@ -302,6 +302,10 @@ contract LuckyBuy is
         }
     }
 
+    /// @notice Allows the admin to withdraw ETH from the contract balance
+    /// @param amount The amount of ETH to withdraw
+    /// @dev Only callable by admin role
+    /// @dev Emits a Withdrawal event
     function withdraw(
         uint256 amount
     ) external nonReentrant onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -312,6 +316,22 @@ contract LuckyBuy is
         if (!success) revert WithdrawalFailed();
 
         emit Withdrawal(msg.sender, amount);
+    }
+
+    /// @notice Allows the admin to withdraw all ETH from the contract
+    /// @dev Only callable by admin role
+    /// @dev Emits a Withdrawal event
+    function emergencyWithdraw()
+        external
+        nonReentrant
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        (bool success, ) = payable(msg.sender).call{
+            value: address(this).balance
+        }("");
+        if (!success) revert WithdrawalFailed();
+
+        emit Withdrawal(msg.sender, address(this).balance);
     }
 
     /// @notice Calculates contribution amount after removing fee

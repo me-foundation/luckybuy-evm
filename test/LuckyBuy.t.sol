@@ -905,4 +905,23 @@ contract TestLuckyBuyCommit is Test {
             "Contract balance state should remain 0"
         );
     }
+
+    function testEmergencyWithdraw() public {
+        luckyBuy.commit{value: amount}(
+            receiver,
+            cosigner,
+            seed,
+            orderHash,
+            reward
+        );
+
+        uint256 initialBalance = address(admin).balance;
+
+        vm.startPrank(admin);
+        luckyBuy.emergencyWithdraw();
+        vm.stopPrank();
+
+        assertEq(address(luckyBuy).balance, 0);
+        assertEq(address(admin).balance, initialBalance + amount);
+    }
 }
