@@ -68,6 +68,7 @@ contract LuckyBuy is
     error InvalidAmount();
     error InvalidCosigner();
     error InvalidOrderHash();
+    error InvalidProtocolFee();
     error InvalidReceiver();
     error InvalidReward();
     error FulfillmentFailed();
@@ -325,13 +326,13 @@ contract LuckyBuy is
         nonReentrant
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
+        treasuryBalance = 0;
+        commitBalance = 0;
+        protocolBalance = 0;
         (bool success, ) = payable(msg.sender).call{
             value: address(this).balance
         }("");
         if (!success) revert WithdrawalFailed();
-        treasuryBalance = 0;
-        commitBalance = 0;
-        protocolBalance = 0;
 
         emit Withdrawal(msg.sender, address(this).balance);
     }
@@ -450,6 +451,7 @@ contract LuckyBuy is
     function setProtocolFee(
         uint256 protocolFee_
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (protocolFee_ > BASE_POINTS) revert InvalidProtocolFee();
         _setProtocolFee(protocolFee_);
     }
 

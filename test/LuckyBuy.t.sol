@@ -927,4 +927,18 @@ contract TestLuckyBuyCommit is Test {
         assertEq(luckyBuy.commitBalance(), 0);
         assertEq(luckyBuy.protocolBalance(), 0);
     }
+
+    function testInvalidProtocolFee() public {
+        vm.startPrank(admin);
+        uint256 invalidProtocolFee = luckyBuy.BASE_POINTS() + 1;
+        vm.expectRevert(LuckyBuy.InvalidProtocolFee.selector);
+        luckyBuy.setProtocolFee(invalidProtocolFee);
+        vm.stopPrank();
+    }
+
+    function testProtocolFeeUpdate() public {
+        vm.startPrank(admin);
+        luckyBuy.setProtocolFee(100);
+        vm.stopPrank();
+    }
 }
