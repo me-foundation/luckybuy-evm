@@ -334,6 +334,7 @@ contract LuckyBuy is
         }("");
         if (!success) revert WithdrawalFailed();
 
+        _pause();
         emit Withdrawal(msg.sender, address(this).balance);
     }
 

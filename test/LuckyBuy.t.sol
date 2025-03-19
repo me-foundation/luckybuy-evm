@@ -926,6 +926,7 @@ contract TestLuckyBuyCommit is Test {
         assertEq(luckyBuy.treasuryBalance(), 0);
         assertEq(luckyBuy.commitBalance(), 0);
         assertEq(luckyBuy.protocolBalance(), 0);
+        assertEq(luckyBuy.paused(), true);
     }
 
     function testInvalidProtocolFee() public {
