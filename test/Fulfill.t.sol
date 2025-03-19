@@ -95,7 +95,8 @@ contract FulfillTest is Test {
         uint256 counter,
         bytes32 orderHash,
         uint256 amount,
-        uint256 reward
+        uint256 reward,
+        bytes32 digest
     );
 
     // Flag to track if we should run the actual tests
@@ -203,7 +204,8 @@ contract FulfillTest is Test {
             0, // counter (first commit, so counter is 0)
             orderHash, // orderHash
             COMMIT_AMOUNT, // amount
-            REWARD // reward
+            REWARD, // reward
+            digest
         );
         vm.prank(RECEIVER);
         luckyBuy.commit{value: COMMIT_AMOUNT}(
@@ -316,7 +318,8 @@ contract FulfillTest is Test {
             0, // counter (first commit, so counter is 0)
             orderHash, // orderHash
             COMMIT_AMOUNT, // amount
-            REWARD // reward
+            REWARD, // reward
+            fail_digest
         );
         vm.prank(RECEIVER);
         luckyBuy.commit{value: COMMIT_AMOUNT}(
@@ -425,7 +428,8 @@ contract FulfillTest is Test {
             0, // counter (first commit, so counter is 0)
             orderHash, // orderHash
             FAIL_COMMIT_AMOUNT, // amount
-            REWARD // reward
+            REWARD, // reward
+            fail_digest
         );
         vm.prank(RECEIVER);
         luckyBuy.commit{value: FAIL_COMMIT_AMOUNT}(
@@ -617,5 +621,118 @@ contract FulfillTest is Test {
 
         // Get the block chain id
         console.log(block.chainid);
+    }
+
+    function test_fulfill_by_digest() public {
+        // Skip the test entirely if we don't have an RPC URL
+        if (!shouldRunTests) {
+            console.log("Test skipped: MAINNET_RPC_URL not defined");
+            return;
+        }
+
+        // Fund the contract treasury
+        (bool success, ) = address(luckyBuy).call{value: FUND_AMOUNT}("");
+        assertEq(success, true);
+
+        bytes32 orderHash = luckyBuy.hashOrder(
+            TARGET,
+            REWARD,
+            DATA,
+            TOKEN,
+            TOKEN_ID
+        );
+
+        assertEq(orderHash, TypescriptOrderHash);
+
+        // backend builds the commit data off chain. The user should technically choose the cosigner or we could be accused of trying random cosigners until we find one that benefits us.
+        uint256 seed = 12345; // User provides this data
+
+        // User submits the commit data from the back end with their payment to the contract
+        vm.expectEmit(true, true, true, false);
+        emit Commit(
+            RECEIVER, // indexed sender
+            0, // indexed commitId (first commit, so ID is 0)
+            RECEIVER, // indexed receiver
+            cosigner, // cosigner
+            seed, // seed (12345)
+            0, // counter (first commit, so counter is 0)
+            orderHash, // orderHash
+            COMMIT_AMOUNT, // amount
+            REWARD, // reward
+            digest
+        );
+        vm.prank(RECEIVER);
+        luckyBuy.commit{value: COMMIT_AMOUNT}(
+            RECEIVER,
+            cosigner,
+            seed,
+            orderHash,
+            REWARD
+        );
+
+        (
+            uint256 id,
+            address storedReceiver,
+            address storedCosigner,
+            uint256 storedSeed,
+            uint256 storedCounter,
+            bytes32 storedOrderHash,
+            uint256 storedAmount,
+            uint256 storedReward
+        ) = luckyBuy.luckyBuys(0);
+
+        // Log the stored data
+
+        // console.log("\nStored Commit Data:");
+        // console.log("ID:", id);
+        // console.log("Receiver:", storedReceiver);
+        // console.log("Cosigner:", storedCosigner);
+        // console.log("Seed:", storedSeed);
+        // console.log("Counter:", storedCounter);
+        // console.logBytes32(storedOrderHash);
+        // console.log("Amount:", storedAmount);
+        // console.log("Reward:", storedReward);
+
+        // Log the hashes and recovery
+        bytes32 onChainHash = luckyBuy.hashLuckyBuy(0);
+        // console.log("\nHash Comparison:");
+        // console.logBytes32(digest); // Off-chain hash
+        // console.logBytes32(onChainHash); // On-chain hash
+
+        // Log the recovered addresses
+        address recoveredFromOffchain = luckyBuy.mockRecover(digest, signature);
+        address recoveredFromOnchain = luckyBuy.mockRecover(
+            onChainHash,
+            signature
+        );
+        // console.log("\nRecovered Addresses:");
+        // console.log("From Off-chain Hash:", recoveredFromOffchain);
+        // console.log("From On-chain Hash:", recoveredFromOnchain);
+        // console.log("Expected Cosigner:", cosigner);
+        assertEq(recoveredFromOffchain, cosigner);
+        assertEq(recoveredFromOnchain, cosigner);
+
+        // fulfill the order
+        luckyBuy.fulfillByDigest(
+            digest,
+            TARGET,
+            DATA,
+            REWARD,
+            TOKEN,
+            TOKEN_ID,
+            signature
+        );
+
+        assertEq(nft.ownerOf(TOKEN_ID), RECEIVER);
+
+        vm.expectRevert(LuckyBuy.AlreadyFulfilled.selector);
+        luckyBuy.fulfill(0, TARGET, DATA, REWARD, TOKEN, TOKEN_ID, signature);
+        // check the balance of the contract
+        assertEq(
+            address(luckyBuy).balance,
+            FUND_AMOUNT + COMMIT_AMOUNT - REWARD
+        );
+
+        console.log(luckyBuy.rng(signature));
     }
 }

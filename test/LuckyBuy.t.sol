@@ -25,7 +25,8 @@ contract TestLuckyBuyCommit is Test {
         uint256 counter,
         bytes32 orderHash,
         uint256 amount,
-        uint256 reward
+        uint256 reward,
+        bytes32 digest
     );
 
     event MaxRewardUpdated(uint256 oldMaxReward, uint256 newMaxReward);
@@ -56,7 +57,8 @@ contract TestLuckyBuyCommit is Test {
             0, // First counter for this receiver should be 0
             orderHash,
             amount,
-            reward
+            reward,
+            bytes32(0)
         );
 
         luckyBuy.commit{value: amount}(

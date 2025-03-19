@@ -17,6 +17,7 @@ contract LuckyBuy is
     ReentrancyGuard
 {
     CommitData[] public luckyBuys;
+    mapping(bytes32 commitDigest => uint256 commitId) public commitIdByDigest;
 
     uint256 public balance;
     uint256 public maxReward = 30 ether;
@@ -35,7 +36,8 @@ contract LuckyBuy is
         uint256 counter,
         bytes32 orderHash,
         uint256 amount,
-        uint256 reward
+        uint256 reward,
+        bytes32 digest
     );
     event CosignerAdded(address indexed cosigner);
     event CosignerRemoved(address indexed cosigner);
@@ -116,6 +118,9 @@ contract LuckyBuy is
 
         luckyBuys.push(commitData);
 
+        bytes32 digest = hash(commitData);
+        commitIdByDigest[digest] = commitId;
+
         emit Commit(
             msg.sender,
             commitId,
@@ -125,7 +130,8 @@ contract LuckyBuy is
             userCounter,
             orderHash_, // Relay tx properties: to, data, value
             msg.value,
-            reward_
+            reward_,
+            digest
         );
 
         return commitId;
@@ -148,7 +154,7 @@ contract LuckyBuy is
         address token_,
         uint256 tokenId_,
         bytes calldata signature_
-    ) external payable nonReentrant whenNotPaused {
+    ) public payable nonReentrant whenNotPaused {
         // validate tx
         if (msg.value > 0) _depositTreasury(msg.value);
         if (orderAmount_ > balance) revert InsufficientBalance();
@@ -206,6 +212,36 @@ contract LuckyBuy is
                 commitData.receiver
             );
         }
+    }
+
+    /// @notice Fulfills a commit with the result of the random number generation
+    /// @param commitDigest_ Digest of the commit to fulfill
+    /// @param marketplace_ Address where the order should be executed
+    /// @param orderData_ Calldata for the order execution
+    /// @param orderAmount_ Amount of ETH to send with the order
+    /// @param token_ Address of the token being transferred (zero address for ETH)
+    /// @param tokenId_ ID of the token if it's an NFT
+    /// @param signature_ Signature used for random number generation
+    /// @dev Emits a Fulfillment event on success
+    function fulfillByDigest(
+        bytes32 commitDigest_,
+        address marketplace_,
+        bytes calldata orderData_,
+        uint256 orderAmount_,
+        address token_,
+        uint256 tokenId_,
+        bytes calldata signature_
+    ) public payable whenNotPaused {
+        return
+            fulfill(
+                commitIdByDigest[commitDigest_],
+                marketplace_,
+                orderData_,
+                orderAmount_,
+                token_,
+                tokenId_,
+                signature_
+            );
     }
 
     function _handleWin(
