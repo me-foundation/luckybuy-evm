@@ -29,6 +29,8 @@ contract TestLuckyBuyCommit is Test {
         uint256 reward
     );
 
+    event Withdrawal(address indexed sender, uint256 amount);
+
     event MaxRewardUpdated(uint256 oldMaxReward, uint256 newMaxReward);
 
     function setUp() public {
@@ -771,5 +773,132 @@ contract TestLuckyBuyCommit is Test {
         ) = luckyBuy.luckyBuys(0);
         assertEq(amountWithoutFee, amount);
         assertEq(amountWithFee, address(luckyBuy).balance);
+    }
+
+    function testWithdrawSuccess() public {
+        uint256 withdrawAmount = 1 ether;
+
+        // Fund the contract first
+        vm.deal(address(this), withdrawAmount);
+        (bool success, ) = address(luckyBuy).call{value: withdrawAmount}("");
+        assertTrue(success, "Initial funding should succeed");
+
+        uint256 initialBalance = address(luckyBuy).balance;
+        uint256 initialAdminBalance = address(admin).balance;
+
+        vm.expectEmit(true, true, true, false);
+        emit Withdrawal(admin, withdrawAmount);
+
+        vm.prank(admin);
+        luckyBuy.withdraw(withdrawAmount);
+
+        assertEq(
+            address(luckyBuy).balance,
+            initialBalance - withdrawAmount,
+            "Contract balance should decrease"
+        );
+        assertEq(
+            address(admin).balance,
+            initialAdminBalance + withdrawAmount,
+            "Admin balance should increase"
+        );
+        assertEq(
+            luckyBuy.balance(),
+            initialBalance - withdrawAmount,
+            "Contract balance state should update"
+        );
+    }
+
+    function testWithdrawInsufficientBalance() public {
+        uint256 withdrawAmount = 1 ether;
+
+        // Try to withdraw without funding
+        vm.startPrank(admin);
+        vm.expectRevert(LuckyBuy.InsufficientBalance.selector);
+        luckyBuy.withdraw(withdrawAmount);
+        vm.stopPrank();
+
+        // Fund with less than withdraw amount
+        vm.deal(address(this), withdrawAmount / 2);
+        (bool success, ) = address(luckyBuy).call{value: withdrawAmount / 2}(
+            ""
+        );
+        assertTrue(success, "Initial funding should succeed");
+
+        // Try to withdraw more than available
+        vm.startPrank(admin);
+        vm.expectRevert(LuckyBuy.InsufficientBalance.selector);
+        luckyBuy.withdraw(withdrawAmount);
+        vm.stopPrank();
+    }
+
+    function testWithdrawNonAdmin() public {
+        uint256 withdrawAmount = 1 ether;
+
+        // Fund the contract
+        vm.deal(address(this), withdrawAmount);
+        (bool success, ) = address(luckyBuy).call{value: withdrawAmount}("");
+        assertTrue(success, "Initial funding should succeed");
+
+        // Try to withdraw as non-admin
+        vm.startPrank(user);
+        vm.expectRevert();
+        luckyBuy.withdraw(withdrawAmount);
+        vm.stopPrank();
+    }
+
+    function testWithdrawMultiple() public {
+        uint256 totalAmount = 5 ether;
+        uint256 withdrawAmount = 1 ether;
+
+        // Fund the contract
+        vm.deal(address(this), totalAmount);
+        (bool success, ) = address(luckyBuy).call{value: totalAmount}("");
+        assertTrue(success, "Initial funding should succeed");
+
+        uint256 initialBalance = address(luckyBuy).balance;
+        uint256 initialAdminBalance = address(admin).balance;
+
+        // Perform multiple withdrawals
+        for (uint256 i = 0; i < 5; i++) {
+            vm.startPrank(admin);
+            luckyBuy.withdraw(withdrawAmount);
+            vm.stopPrank();
+
+            assertEq(
+                address(luckyBuy).balance,
+                initialBalance - (withdrawAmount * (i + 1)),
+                "Contract balance should decrease correctly"
+            );
+            assertEq(
+                address(admin).balance,
+                initialAdminBalance + (withdrawAmount * (i + 1)),
+                "Admin balance should increase correctly"
+            );
+            assertEq(
+                luckyBuy.balance(),
+                initialBalance - (withdrawAmount * (i + 1)),
+                "Contract balance state should update correctly"
+            );
+        }
+    }
+
+    function testWithdrawZeroAmount() public {
+        // Try to withdraw zero amount
+        vm.startPrank(admin);
+        luckyBuy.withdraw(0);
+        vm.stopPrank();
+
+        // State should remain unchanged
+        assertEq(
+            address(luckyBuy).balance,
+            0,
+            "Contract balance should remain 0"
+        );
+        assertEq(
+            luckyBuy.balance(),
+            0,
+            "Contract balance state should remain 0"
+        );
     }
 }

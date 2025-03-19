@@ -55,6 +55,8 @@ contract LuckyBuy is
     );
     event MaxRewardUpdated(uint256 oldMaxReward, uint256 newMaxReward);
     event ProtocolFeeUpdated(uint256 oldProtocolFee, uint256 newProtocolFee);
+    event Withdrawal(address indexed sender, uint256 amount);
+
     error AlreadyCosigner();
     error AlreadyFulfilled();
     error InsufficientBalance();
@@ -65,7 +67,7 @@ contract LuckyBuy is
     error InvalidReward();
     error FulfillmentFailed();
     error InvalidCommitId();
-
+    error WithdrawalFailed();
     /// @notice Constructor initializes the contract and handles any pre-existing balance
     /// @dev Sets up EIP712 domain separator and deposits any ETH sent during deployment /// @notice Constructor initializes the contract and handles any pre-existing balance
     /// @dev Sets up EIP712 domain separator and deposits any ETH sent during deployment
@@ -277,8 +279,11 @@ contract LuckyBuy is
 
     function withdraw(uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (amount > balance) revert InsufficientBalance();
-        payable(msg.sender).transfer(amount);
         balance -= amount;
+
+        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        if (!success) revert WithdrawalFailed();
+
         emit Withdrawal(msg.sender, amount);
     }
 
@@ -305,7 +310,9 @@ contract LuckyBuy is
         return (_amount * protocolFee) / BASE_POINTS;
     }
 
+    // ############################################################
     // ############ GETTERS & SETTERS ############
+    // ############################################################
 
     /// @notice Adds a new authorized cosigner
     /// @param cosigner_ Address to add as cosigner
