@@ -29,7 +29,7 @@ contract LuckyBuy is
     mapping(address cosigner => bool active) public isCosigner;
     mapping(address receiver => uint256 counter) public luckyBuyCount;
     mapping(uint256 commitId => bool fulfilled) public isFulfilled;
-    // We track this because we can change the fees at any time. This allows open commits to be fulfilled with the fees at the time of commit
+    // We track this because we can change the fees at any time. This allows open commits to be fulfilled/returned with the fees at the time of commit
     mapping(uint256 commitId => uint256 fee) public feesPaid;
 
     event Commit(
@@ -285,6 +285,7 @@ contract LuckyBuy is
 
             balance -= transferAmount;
 
+            // This can also revert if the receiver is a contract that doesn't accept ETH
             payable(commitData.receiver).transfer(transferAmount);
             emit Fulfillment(
                 msg.sender,
@@ -301,7 +302,9 @@ contract LuckyBuy is
         }
     }
 
-    function withdraw(uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function withdraw(
+        uint256 amount
+    ) external nonReentrant onlyRole(DEFAULT_ADMIN_ROLE) {
         if (amount > balance) revert InsufficientBalance();
         balance -= amount;
 
