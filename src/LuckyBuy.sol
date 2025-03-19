@@ -256,12 +256,11 @@ contract LuckyBuy is
         uint256 tokenId_,
         uint256 protocolFeesPaid
     ) internal {
-        // subtract the order amount from the contract balance
-        treasuryBalance -= orderAmount_;
-
         // execute the market data to transfer the nft
         bool success = _fulfillOrder(marketplace_, orderData_, orderAmount_);
         if (success) {
+            // subtract the order amount from the contract balance
+            treasuryBalance -= orderAmount_;
             // emit a success transfer for the nft
             emit Fulfillment(
                 msg.sender,
@@ -330,6 +329,9 @@ contract LuckyBuy is
             value: address(this).balance
         }("");
         if (!success) revert WithdrawalFailed();
+        treasuryBalance = 0;
+        commitBalance = 0;
+        protocolBalance = 0;
 
         emit Withdrawal(msg.sender, address(this).balance);
     }

@@ -923,5 +923,8 @@ contract TestLuckyBuyCommit is Test {
 
         assertEq(address(luckyBuy).balance, 0);
         assertEq(address(admin).balance, initialBalance + amount);
+        assertEq(luckyBuy.treasuryBalance(), 0);
+        assertEq(luckyBuy.commitBalance(), 0);
+        assertEq(luckyBuy.protocolBalance(), 0);
     }
 }

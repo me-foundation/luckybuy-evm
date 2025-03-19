@@ -293,6 +293,11 @@ contract FulfillTest is Test {
             return;
         }
 
+        uint256 protocolFee = 100;
+
+        vm.prank(admin);
+        luckyBuy.setProtocolFee(protocolFee);
+
         (bool success, ) = address(luckyBuy).call{value: FUND_AMOUNT}("");
         assertEq(success, true);
 
@@ -309,6 +314,8 @@ contract FulfillTest is Test {
         // backend builds the commit data off chain. The user should technically choose the cosigner or we could be accused of trying random cosigners until we find one that benefits us.
         uint256 seed = 12345; // User provides this data
 
+        uint256 commitFee = luckyBuy.calculateFee(COMMIT_AMOUNT);
+
         // User submits the commit data from the back end with their payment to the contract
         vm.expectEmit(true, true, true, false);
         emit Commit(
@@ -321,10 +328,10 @@ contract FulfillTest is Test {
             orderHash, // orderHash
             COMMIT_AMOUNT, // amount
             REWARD, // reward
-            0 // fee
+            commitFee // fee
         );
         vm.prank(RECEIVER);
-        luckyBuy.commit{value: COMMIT_AMOUNT}(
+        luckyBuy.commit{value: COMMIT_AMOUNT + commitFee}(
             RECEIVER,
             cosigner,
             seed,
@@ -333,7 +340,7 @@ contract FulfillTest is Test {
         );
 
         vm.prank(user2);
-        luckyBuy.commit{value: COMMIT_AMOUNT}(
+        luckyBuy.commit{value: COMMIT_AMOUNT + commitFee}(
             user2,
             cosigner,
             seed,
@@ -368,14 +375,41 @@ contract FulfillTest is Test {
         );
 
         // We have created 2 commits, each with 100% chance of success COMMIT_AMOUNT = REWARD.
-        assertEq(address(luckyBuy).balance, FUND_AMOUNT + (REWARD * 2));
+        assertEq(
+            address(luckyBuy).balance,
+            FUND_AMOUNT + (COMMIT_AMOUNT * 2) + (commitFee * 2)
+        );
 
+        uint256 treasuryBalance = luckyBuy.treasuryBalance();
+        uint256 commitBalance = luckyBuy.commitBalance();
+        uint256 protocolBalance = luckyBuy.protocolBalance();
+
+        console.log("Treasury Balance:", treasuryBalance);
+        console.log("Commit Balance:", commitBalance);
+        console.log("Protocol Balance:", protocolBalance);
         // fulfill the order
         luckyBuy.fulfill(0, TARGET, DATA, REWARD, TOKEN, TOKEN_ID, signature);
 
+        //
+        console.log(
+            "Treasury Balance:",
+            luckyBuy.treasuryBalance() - (REWARD - COMMIT_AMOUNT) + commitFee
+        );
+        console.log("Commit Balance:", luckyBuy.commitBalance());
+        console.log("Protocol Balance:", luckyBuy.protocolBalance());
+
         assertEq(nft.ownerOf(TOKEN_ID), RECEIVER);
 
-        assertEq(address(luckyBuy).balance, FUND_AMOUNT + REWARD);
+        // One commit amount was used to fulfill and make the purchase. Our treasury balance paid the difference.
+        assertEq(
+            address(luckyBuy).balance,
+            FUND_AMOUNT + COMMIT_AMOUNT + commitFee * 2
+        );
+        assertEq(
+            luckyBuy.treasuryBalance(),
+            treasuryBalance - (REWARD - COMMIT_AMOUNT) + commitFee
+        );
+        assertEq(luckyBuy.protocolBalance(), protocolBalance - commitFee);
 
         // This will fulfill but it will transfer eth.
         luckyBuy.fulfill(
@@ -389,10 +423,10 @@ contract FulfillTest is Test {
         );
 
         // check the balance of the contract
-        assertEq(address(luckyBuy).balance, FUND_AMOUNT);
+        // One commit was returned to the user and the other was used to fulfill the order, the fulfill is kept.
+        assertEq(address(luckyBuy).balance, FUND_AMOUNT + commitFee);
 
         console.log(address(luckyBuy).balance);
-        console.log(luckyBuy.rng(signature));
     }
 
     function test_end_to_end_fail() public {
