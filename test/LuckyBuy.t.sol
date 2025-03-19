@@ -642,7 +642,7 @@ contract TestLuckyBuyCommit is Test {
         // Test direct ETH transfer
         (bool success, ) = address(luckyBuy).call{value: depositAmount}("");
         assertTrue(success);
-        assertEq(luckyBuy.balance(), initialBalance + depositAmount);
+        assertEq(luckyBuy.treasuryBalance(), initialBalance + depositAmount);
 
         // Test balance update during commit
         vm.startPrank(receiver);
@@ -655,7 +655,7 @@ contract TestLuckyBuyCommit is Test {
         );
         vm.stopPrank();
 
-        assertEq(luckyBuy.balance(), depositAmount);
+        assertEq(luckyBuy.treasuryBalance(), depositAmount);
         assertEq(luckyBuy.commitBalance(), amount);
         assertEq(luckyBuy.protocolBalance(), 0);
     }
@@ -807,7 +807,7 @@ contract TestLuckyBuyCommit is Test {
             "Admin balance should increase"
         );
         assertEq(
-            luckyBuy.balance(),
+            luckyBuy.treasuryBalance(),
             initialBalance - withdrawAmount,
             "Contract balance state should update"
         );
@@ -880,7 +880,7 @@ contract TestLuckyBuyCommit is Test {
                 "Admin balance should increase correctly"
             );
             assertEq(
-                luckyBuy.balance(),
+                luckyBuy.treasuryBalance(),
                 initialBalance - (withdrawAmount * (i + 1)),
                 "Contract balance state should update correctly"
             );
@@ -900,7 +900,7 @@ contract TestLuckyBuyCommit is Test {
             "Contract balance should remain 0"
         );
         assertEq(
-            luckyBuy.balance(),
+            luckyBuy.treasuryBalance(),
             0,
             "Contract balance state should remain 0"
         );

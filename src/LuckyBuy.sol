@@ -18,7 +18,7 @@ contract LuckyBuy is
 {
     CommitData[] public luckyBuys;
 
-    uint256 public balance; // The contract balance
+    uint256 public treasuryBalance; // The contract balance
     uint256 public commitBalance; // The open commit balances
     uint256 public protocolBalance; // The protocol fees for the open commits
     uint256 public maxReward = 30 ether;
@@ -73,8 +73,8 @@ contract LuckyBuy is
     error FulfillmentFailed();
     error InvalidCommitId();
     error WithdrawalFailed();
+
     /// @notice Constructor initializes the contract and handles any pre-existing balance
-    /// @dev Sets up EIP712 domain separator and deposits any ETH sent during deployment /// @notice Constructor initializes the contract and handles any pre-existing balance
     /// @dev Sets up EIP712 domain separator and deposits any ETH sent during deployment
     constructor(
         uint256 protocolFee_
@@ -175,7 +175,7 @@ contract LuckyBuy is
     ) external payable nonReentrant whenNotPaused {
         // validate tx
         if (msg.value > 0) _depositTreasury(msg.value);
-        if (orderAmount_ > balance) revert InsufficientBalance();
+        if (orderAmount_ > treasuryBalance) revert InsufficientBalance();
         if (isFulfilled[commitId_]) revert AlreadyFulfilled();
         if (commitId_ >= luckyBuys.length) revert InvalidCommitId();
 
@@ -201,12 +201,12 @@ contract LuckyBuy is
 
         // Collect the commit balance and protocol fees
         // transfer the commit balance to the contract
-        balance += commitData.amount;
+        treasuryBalance += commitData.amount;
         commitBalance -= commitData.amount;
 
         // transfer the protocol fees to the contract
         uint256 protocolFeesPaid = feesPaid[commitData.id];
-        balance += protocolFeesPaid;
+        treasuryBalance += protocolFeesPaid;
         protocolBalance -= protocolFeesPaid;
 
         // calculate the odds in base points
@@ -257,7 +257,7 @@ contract LuckyBuy is
         uint256 protocolFeesPaid
     ) internal {
         // subtract the order amount from the contract balance
-        balance -= orderAmount_;
+        treasuryBalance -= orderAmount_;
 
         // execute the market data to transfer the nft
         bool success = _fulfillOrder(marketplace_, orderData_, orderAmount_);
@@ -279,11 +279,11 @@ contract LuckyBuy is
             // Order failed, transfer the eth commit + fees back to the receiver
             uint256 protocolFeesPaid = feesPaid[commitData.id];
             // Headcheck: Because fees are tracked separately, this should never happen
-            // if (protocolFeesPaid > balance) revert InsufficientBalance();
+            // if (protocolFeesPaid > treasuryBalance) revert InsufficientBalance();
 
             uint256 transferAmount = commitData.amount + protocolFeesPaid;
 
-            balance -= transferAmount;
+            treasuryBalance -= transferAmount;
 
             // This can also revert if the receiver is a contract that doesn't accept ETH
             payable(commitData.receiver).transfer(transferAmount);
@@ -309,8 +309,8 @@ contract LuckyBuy is
     function withdraw(
         uint256 amount
     ) external nonReentrant onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (amount > balance) revert InsufficientBalance();
-        balance -= amount;
+        if (amount > treasuryBalance) revert InsufficientBalance();
+        treasuryBalance -= amount;
 
         (bool success, ) = payable(msg.sender).call{value: amount}("");
         if (!success) revert WithdrawalFailed();
@@ -399,7 +399,7 @@ contract LuckyBuy is
     /// @dev Called internally when receiving ETH
     /// @param amount Amount of ETH to deposit
     function _depositTreasury(uint256 amount) internal {
-        balance += amount;
+        treasuryBalance += amount;
         emit Deposit(msg.sender, amount);
     }
 

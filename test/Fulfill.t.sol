@@ -476,7 +476,7 @@ contract FulfillTest is Test {
         console.log(address(luckyBuy).balance);
 
         assertEq(success, true);
-        assertEq(luckyBuy.balance(), FUND_AMOUNT);
+        assertEq(luckyBuy.treasuryBalance(), FUND_AMOUNT);
         assertEq(address(luckyBuy).balance, FUND_AMOUNT);
         assertEq(luckyBuy.protocolBalance(), 0);
 
