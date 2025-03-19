@@ -95,7 +95,8 @@ contract FulfillTest is Test {
         uint256 counter,
         bytes32 orderHash,
         uint256 amount,
-        uint256 reward
+        uint256 reward,
+        uint256 fee
     );
 
     // Flag to track if we should run the actual tests
@@ -203,7 +204,8 @@ contract FulfillTest is Test {
             0, // counter (first commit, so counter is 0)
             orderHash, // orderHash
             COMMIT_AMOUNT, // amount
-            REWARD // reward
+            REWARD, // reward
+            0
         );
         vm.prank(RECEIVER);
         luckyBuy.commit{value: COMMIT_AMOUNT}(
@@ -316,7 +318,8 @@ contract FulfillTest is Test {
             0, // counter (first commit, so counter is 0)
             orderHash, // orderHash
             COMMIT_AMOUNT, // amount
-            REWARD // reward
+            REWARD, // reward
+            0 // fee
         );
         vm.prank(RECEIVER);
         luckyBuy.commit{value: COMMIT_AMOUNT}(
@@ -425,7 +428,8 @@ contract FulfillTest is Test {
             0, // counter (first commit, so counter is 0)
             orderHash, // orderHash
             FAIL_COMMIT_AMOUNT, // amount
-            REWARD // reward
+            REWARD, // reward
+            0 // fee
         );
         vm.prank(RECEIVER);
         luckyBuy.commit{value: FAIL_COMMIT_AMOUNT}(

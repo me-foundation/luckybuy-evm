@@ -26,7 +26,8 @@ contract TestLuckyBuyCommit is Test {
         uint256 counter,
         bytes32 orderHash,
         uint256 amount,
-        uint256 reward
+        uint256 reward,
+        uint256 fee
     );
 
     event Withdrawal(address indexed sender, uint256 amount);
@@ -59,7 +60,8 @@ contract TestLuckyBuyCommit is Test {
             0, // First counter for this receiver should be 0
             orderHash,
             amount,
-            reward
+            reward,
+            0
         );
 
         luckyBuy.commit{value: amount}(
@@ -653,7 +655,9 @@ contract TestLuckyBuyCommit is Test {
         );
         vm.stopPrank();
 
-        assertEq(luckyBuy.balance(), initialBalance + depositAmount + amount);
+        assertEq(luckyBuy.balance(), depositAmount);
+        assertEq(luckyBuy.commitBalance(), amount);
+        assertEq(luckyBuy.protocolBalance(), 0);
     }
 
     function testCommitId() public {

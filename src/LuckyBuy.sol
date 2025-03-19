@@ -18,7 +18,9 @@ contract LuckyBuy is
 {
     CommitData[] public luckyBuys;
 
-    uint256 public balance;
+    uint256 public balance; // The contract balance
+    uint256 public commitBalance; // The open commit balances
+    uint256 public protocolBalance; // The protocol fees for the open commits
     uint256 public maxReward = 30 ether;
     uint256 public protocolFee = 0;
 
@@ -27,6 +29,7 @@ contract LuckyBuy is
     mapping(address cosigner => bool active) public isCosigner;
     mapping(address receiver => uint256 counter) public luckyBuyCount;
     mapping(uint256 commitId => bool fulfilled) public isFulfilled;
+    // We track this because we can change the fees at any time. This allows open commits to be fulfilled with the fees at the time of commit
     mapping(uint256 commitId => uint256 fee) public feesPaid;
 
     event Commit(
@@ -38,7 +41,8 @@ contract LuckyBuy is
         uint256 counter,
         bytes32 orderHash,
         uint256 amount,
-        uint256 reward
+        uint256 reward,
+        uint256 fee
     );
     event CosignerAdded(address indexed cosigner);
     event CosignerRemoved(address indexed cosigner);
@@ -115,8 +119,9 @@ contract LuckyBuy is
         uint256 amountWithoutFee = calculateContributionWithoutFee(msg.value);
         uint256 fee = msg.value - amountWithoutFee;
 
-        balance += msg.value;
         feesPaid[commitId] = fee;
+        protocolBalance += fee;
+        commitBalance += amountWithoutFee;
 
         CommitData memory commitData = CommitData({
             id: commitId,
@@ -140,7 +145,8 @@ contract LuckyBuy is
             userCounter,
             orderHash_, // Relay tx properties: to, data, value
             amountWithoutFee,
-            reward_
+            reward_,
+            fee
         );
 
         return commitId;
@@ -190,6 +196,15 @@ contract LuckyBuy is
         if (cosigner != commitData.cosigner) revert InvalidCosigner();
         if (!isCosigner[cosigner]) revert InvalidCosigner();
 
+        // transfer the commit balance to the contract
+        balance += commitData.amount;
+        commitBalance -= commitData.amount;
+
+        // transfer the protocol fees to the contract
+        uint256 protocolFeesPaid = feesPaid[commitData.id];
+        balance += protocolFeesPaid;
+        protocolBalance -= protocolFeesPaid;
+
         // calculate the odds in base points
         uint256 odds = _calculateOdds(commitData.amount, commitData.reward);
         uint256 rng = _rng(signature_);
@@ -234,6 +249,7 @@ contract LuckyBuy is
         address token_,
         uint256 tokenId_
     ) internal {
+        // subtract the order amount from the contract balance
         balance -= orderAmount_;
 
         // execute the market data to transfer the nft
@@ -252,16 +268,16 @@ contract LuckyBuy is
                 commitData.receiver
             );
         } else {
-            // Order failed, transfer the eth back to the receiver
+            // Order failed, transfer the eth commit + fees back to the receiver
             uint256 protocolFeesPaid = feesPaid[commitData.id];
+            // Headcheck: Because fees are tracked separately, this should never happen
+            // if (protocolFeesPaid > balance) revert InsufficientBalance();
 
-            if (protocolFeesPaid > balance) revert InsufficientBalance();
+            uint256 transferAmount = commitData.amount + protocolFeesPaid;
 
-            balance -= protocolFeesPaid;
+            balance -= transferAmount;
 
-            uint256 returnAmount = commitData.amount + protocolFeesPaid;
-
-            payable(commitData.receiver).transfer(returnAmount);
+            payable(commitData.receiver).transfer(transferAmount);
             emit Fulfillment(
                 msg.sender,
                 commitData.id,
@@ -270,7 +286,7 @@ contract LuckyBuy is
                 win_,
                 address(0),
                 0,
-                returnAmount,
+                transferAmount,
                 commitData.receiver
             );
         }
