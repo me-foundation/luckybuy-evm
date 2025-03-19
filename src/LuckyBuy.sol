@@ -329,13 +329,13 @@ contract LuckyBuy is
         treasuryBalance = 0;
         commitBalance = 0;
         protocolBalance = 0;
-        (bool success, ) = payable(msg.sender).call{
-            value: address(this).balance
-        }("");
+
+        uint256 currentBalance = address(this).balance;
+        (bool success, ) = payable(msg.sender).call{value: currentBalance}("");
         if (!success) revert WithdrawalFailed();
 
         _pause();
-        emit Withdrawal(msg.sender, address(this).balance);
+        emit Withdrawal(msg.sender, currentBalance);
     }
 
     /// @notice Calculates contribution amount after removing fee
@@ -457,7 +457,8 @@ contract LuckyBuy is
     }
 
     function _setProtocolFee(uint256 protocolFee_) internal {
+        uint256 oldProtocolFee = protocolFee;
         protocolFee = protocolFee_;
-        emit ProtocolFeeUpdated(protocolFee, protocolFee_);
+        emit ProtocolFeeUpdated(oldProtocolFee, protocolFee_);
     }
 }
