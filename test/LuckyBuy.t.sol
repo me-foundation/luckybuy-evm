@@ -653,7 +653,7 @@ contract TestLuckyBuyCommit is Test {
         );
         vm.stopPrank();
 
-        assertEq(luckyBuy.balance(), initialBalance + depositAmount);
+        assertEq(luckyBuy.balance(), initialBalance + depositAmount + amount);
     }
 
     function testCommitId() public {

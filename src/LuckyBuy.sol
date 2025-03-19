@@ -56,7 +56,7 @@ contract LuckyBuy is
     event MaxRewardUpdated(uint256 oldMaxReward, uint256 newMaxReward);
     event ProtocolFeeUpdated(uint256 oldProtocolFee, uint256 newProtocolFee);
     event Withdrawal(address indexed sender, uint256 amount);
-
+    event Deposit(address indexed sender, uint256 amount);
     error AlreadyCosigner();
     error AlreadyFulfilled();
     error InsufficientBalance();
@@ -113,10 +113,9 @@ contract LuckyBuy is
         uint256 userCounter = luckyBuyCount[receiver_]++;
 
         uint256 amountWithoutFee = calculateContributionWithoutFee(msg.value);
-
         uint256 fee = msg.value - amountWithoutFee;
 
-        balance += fee;
+        balance += msg.value;
         feesPaid[commitId] = fee;
 
         CommitData memory commitData = CommitData({
@@ -353,6 +352,7 @@ contract LuckyBuy is
     /// @param amount Amount of ETH to deposit
     function _depositTreasury(uint256 amount) internal {
         balance += amount;
+        emit Deposit(msg.sender, amount);
     }
 
     /// @notice Pauses the contract
