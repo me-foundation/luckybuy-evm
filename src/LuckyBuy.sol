@@ -18,13 +18,19 @@ contract LuckyBuy is
 {
     CommitData[] public luckyBuys;
 
-    uint256 public balance;
+    uint256 public treasuryBalance; // The contract balance
+    uint256 public commitBalance; // The open commit balances
+    uint256 public protocolBalance; // The protocol fees for the open commits
     uint256 public maxReward = 30 ether;
+    uint256 public protocolFee = 0;
+
     uint256 public constant minReward = BASE_POINTS;
 
     mapping(address cosigner => bool active) public isCosigner;
     mapping(address receiver => uint256 counter) public luckyBuyCount;
     mapping(uint256 commitId => bool fulfilled) public isFulfilled;
+    // We track this because we can change the fees at any time. This allows open commits to be fulfilled/returned with the fees at the time of commit
+    mapping(uint256 commitId => uint256 fee) public feesPaid;
 
     event Commit(
         address indexed sender,
@@ -35,7 +41,8 @@ contract LuckyBuy is
         uint256 counter,
         bytes32 orderHash,
         uint256 amount,
-        uint256 reward
+        uint256 reward,
+        uint256 fee
     );
     event CosignerAdded(address indexed cosigner);
     event CosignerRemoved(address indexed cosigner);
@@ -48,29 +55,37 @@ contract LuckyBuy is
         address token,
         uint256 tokenId,
         uint256 amount,
-        address receiver
+        address receiver,
+        uint256 fee
     );
     event MaxRewardUpdated(uint256 oldMaxReward, uint256 newMaxReward);
-
+    event ProtocolFeeUpdated(uint256 oldProtocolFee, uint256 newProtocolFee);
+    event Withdrawal(address indexed sender, uint256 amount);
+    event Deposit(address indexed sender, uint256 amount);
     error AlreadyCosigner();
     error AlreadyFulfilled();
     error InsufficientBalance();
     error InvalidAmount();
     error InvalidCosigner();
     error InvalidOrderHash();
+    error InvalidProtocolFee();
     error InvalidReceiver();
     error InvalidReward();
     error FulfillmentFailed();
     error InvalidCommitId();
+    error WithdrawalFailed();
 
     /// @notice Constructor initializes the contract and handles any pre-existing balance
-    /// @dev Sets up EIP712 domain separator and deposits any ETH sent during deployment /// @notice Constructor initializes the contract and handles any pre-existing balance
     /// @dev Sets up EIP712 domain separator and deposits any ETH sent during deployment
-    constructor() MEAccessControl() SignatureVerifier("LuckyBuy", "1") {
+    constructor(
+        uint256 protocolFee_
+    ) MEAccessControl() SignatureVerifier("LuckyBuy", "1") {
         uint256 existingBalance = address(this).balance;
         if (existingBalance > 0) {
             _depositTreasury(existingBalance);
         }
+
+        _setProtocolFee(protocolFee_);
     }
 
     /// @notice Allows a user to commit funds for a chance to win
@@ -94,14 +109,23 @@ contract LuckyBuy is
         if (receiver_ == address(0)) revert InvalidReceiver();
         if (reward_ > maxReward) revert InvalidReward();
         if (reward_ < minReward) revert InvalidReward();
-        if (msg.value > reward_) revert InvalidAmount();
+
+        uint256 amountWithoutFee = calculateContributionWithoutFee(msg.value);
+
+        if (amountWithoutFee > reward_) revert InvalidAmount();
         if (reward_ == 0) revert InvalidReward();
 
-        if ((msg.value * BASE_POINTS) / reward_ > BASE_POINTS)
+        if ((amountWithoutFee * BASE_POINTS) / reward_ > BASE_POINTS)
             revert InvalidAmount();
 
         uint256 commitId = luckyBuys.length;
         uint256 userCounter = luckyBuyCount[receiver_]++;
+
+        uint256 fee = msg.value - amountWithoutFee;
+
+        feesPaid[commitId] = fee;
+        protocolBalance += fee;
+        commitBalance += amountWithoutFee;
 
         CommitData memory commitData = CommitData({
             id: commitId,
@@ -110,7 +134,7 @@ contract LuckyBuy is
             seed: seed_,
             counter: userCounter,
             orderHash: orderHash_,
-            amount: msg.value,
+            amount: amountWithoutFee,
             reward: reward_
         });
 
@@ -124,8 +148,9 @@ contract LuckyBuy is
             seed_,
             userCounter,
             orderHash_, // Relay tx properties: to, data, value
-            msg.value,
-            reward_
+            amountWithoutFee,
+            reward_,
+            fee
         );
 
         return commitId;
@@ -151,7 +176,7 @@ contract LuckyBuy is
     ) external payable nonReentrant whenNotPaused {
         // validate tx
         if (msg.value > 0) _depositTreasury(msg.value);
-        if (orderAmount_ > balance) revert InsufficientBalance();
+        if (orderAmount_ > treasuryBalance) revert InsufficientBalance();
         if (isFulfilled[commitId_]) revert AlreadyFulfilled();
         if (commitId_ >= luckyBuys.length) revert InvalidCommitId();
 
@@ -175,6 +200,16 @@ contract LuckyBuy is
         if (cosigner != commitData.cosigner) revert InvalidCosigner();
         if (!isCosigner[cosigner]) revert InvalidCosigner();
 
+        // Collect the commit balance and protocol fees
+        // transfer the commit balance to the contract
+        treasuryBalance += commitData.amount;
+        commitBalance -= commitData.amount;
+
+        // transfer the protocol fees to the contract
+        uint256 protocolFeesPaid = feesPaid[commitData.id];
+        treasuryBalance += protocolFeesPaid;
+        protocolBalance -= protocolFeesPaid;
+
         // calculate the odds in base points
         uint256 odds = _calculateOdds(commitData.amount, commitData.reward);
         uint256 rng = _rng(signature_);
@@ -190,7 +225,8 @@ contract LuckyBuy is
                 odds,
                 win,
                 token_,
-                tokenId_
+                tokenId_,
+                protocolFeesPaid
             );
         } else {
             // emit the failure
@@ -203,7 +239,8 @@ contract LuckyBuy is
                 address(0),
                 0,
                 0,
-                commitData.receiver
+                commitData.receiver,
+                protocolFeesPaid
             );
         }
     }
@@ -217,13 +254,14 @@ contract LuckyBuy is
         uint256 odds_,
         bool win_,
         address token_,
-        uint256 tokenId_
+        uint256 tokenId_,
+        uint256 protocolFeesPaid
     ) internal {
-        balance -= orderAmount_;
-
         // execute the market data to transfer the nft
         bool success = _fulfillOrder(marketplace_, orderData_, orderAmount_);
         if (success) {
+            // subtract the order amount from the contract balance
+            treasuryBalance -= orderAmount_;
             // emit a success transfer for the nft
             emit Fulfillment(
                 msg.sender,
@@ -234,11 +272,21 @@ contract LuckyBuy is
                 token_,
                 tokenId_,
                 orderAmount_,
-                commitData.receiver
+                commitData.receiver,
+                protocolFeesPaid
             );
         } else {
-            // Order failed, transfer the eth back to the receiver
-            payable(commitData.receiver).transfer(commitData.amount);
+            // Order failed, transfer the eth commit + fees back to the receiver
+            uint256 protocolFeesPaid = feesPaid[commitData.id];
+            // Headcheck: Because fees are tracked separately, this should never happen
+            // if (protocolFeesPaid > treasuryBalance) revert InsufficientBalance();
+
+            uint256 transferAmount = commitData.amount + protocolFeesPaid;
+
+            treasuryBalance -= transferAmount;
+
+            // This can also revert if the receiver is a contract that doesn't accept ETH
+            payable(commitData.receiver).transfer(transferAmount);
             emit Fulfillment(
                 msg.sender,
                 commitData.id,
@@ -247,11 +295,74 @@ contract LuckyBuy is
                 win_,
                 address(0),
                 0,
-                commitData.amount,
-                commitData.receiver
+                transferAmount,
+                commitData.receiver,
+                protocolFeesPaid
             );
         }
     }
+
+    /// @notice Allows the admin to withdraw ETH from the contract balance
+    /// @param amount The amount of ETH to withdraw
+    /// @dev Only callable by admin role
+    /// @dev Emits a Withdrawal event
+    function withdraw(
+        uint256 amount
+    ) external nonReentrant onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (amount > treasuryBalance) revert InsufficientBalance();
+        treasuryBalance -= amount;
+
+        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        if (!success) revert WithdrawalFailed();
+
+        emit Withdrawal(msg.sender, amount);
+    }
+
+    /// @notice Allows the admin to withdraw all ETH from the contract
+    /// @dev Only callable by admin role
+    /// @dev Emits a Withdrawal event
+    function emergencyWithdraw()
+        external
+        nonReentrant
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        treasuryBalance = 0;
+        commitBalance = 0;
+        protocolBalance = 0;
+        (bool success, ) = payable(msg.sender).call{
+            value: address(this).balance
+        }("");
+        if (!success) revert WithdrawalFailed();
+
+        emit Withdrawal(msg.sender, address(this).balance);
+    }
+
+    /// @notice Calculates contribution amount after removing fee
+    /// @param amount The original amount including fee
+    /// @return The contribution amount without the fee
+    /// @dev Uses formula: contribution = (amount * FEE_DENOMINATOR) / (FEE_DENOMINATOR + feePercent)
+    /// @dev This ensures fee isn't charged on the fee portion itself
+    function calculateContributionWithoutFee(
+        uint256 amount
+    ) public view returns (uint256) {
+        return (amount * BASE_POINTS) / (BASE_POINTS + protocolFee);
+    }
+
+    /// @notice Calculates fee amount based on input amount and fee percentage
+    /// @param _amount The amount to calculate fee on
+    /// @return The calculated fee amount
+    /// @dev Uses fee denominator of 10000 (100% = 10000)
+    function calculateFee(uint256 _amount) external view returns (uint256) {
+        return _calculateFee(_amount);
+    }
+
+    function _calculateFee(uint256 _amount) internal view returns (uint256) {
+        return (_amount * protocolFee) / BASE_POINTS;
+    }
+
+    // ############################################################
+    // ############ GETTERS & SETTERS ############
+    // ############################################################
 
     /// @notice Adds a new authorized cosigner
     /// @param cosigner_ Address to add as cosigner
@@ -291,7 +402,8 @@ contract LuckyBuy is
     /// @dev Called internally when receiving ETH
     /// @param amount Amount of ETH to deposit
     function _depositTreasury(uint256 amount) internal {
-        balance += amount;
+        treasuryBalance += amount;
+        emit Deposit(msg.sender, amount);
     }
 
     /// @notice Pauses the contract
@@ -334,5 +446,17 @@ contract LuckyBuy is
         uint256 amount
     ) internal returns (bool success) {
         (success, ) = to.call{value: amount}(data);
+    }
+
+    function setProtocolFee(
+        uint256 protocolFee_
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (protocolFee_ > BASE_POINTS) revert InvalidProtocolFee();
+        _setProtocolFee(protocolFee_);
+    }
+
+    function _setProtocolFee(uint256 protocolFee_) internal {
+        protocolFee = protocolFee_;
+        emit ProtocolFeeUpdated(protocolFee, protocolFee_);
     }
 }
