@@ -41,6 +41,15 @@ contract MockLuckyBuy is LuckyBuy {
     function rng(bytes calldata signature) public view returns (uint256) {
         return _rng(signature);
     }
+
+    // Debug balance tracking. Second layer of defense to ensure the balances are correct. Drop this anywhere, any time to audit the contract balance.
+    function reconcileBalance() external {
+        uint256 actualBalance = address(this).balance;
+        uint256 expectedBalance = treasuryBalance +
+            commitBalance +
+            protocolBalance;
+        require(actualBalance >= expectedBalance, "Balance mismatch");
+    }
 }
 contract FulfillTest is Test {
     MockLuckyBuy luckyBuy;
@@ -145,7 +154,7 @@ contract FulfillTest is Test {
         console.log("TX Value:", REWARD);
 
         console.log(address(luckyBuy));
-
+        luckyBuy.reconcileBalance();
         assertEq(nft.ownerOf(TOKEN_ID), RECEIVER);
     }
 
@@ -155,11 +164,13 @@ contract FulfillTest is Test {
             console.log("Test skipped: MAINNET_RPC_URL not defined");
             return;
         }
+        luckyBuy.reconcileBalance();
         // deposit treasury
         (bool success, ) = address(luckyBuy).call{value: 10 ether}("");
 
         assertEq(success, true);
 
+        // This is a debug function on MockLuckyBuy to test tx data execution
         luckyBuy.fulfillOrder(TARGET, DATA, REWARD);
 
         assertEq(nft.ownerOf(TOKEN_ID), RECEIVER);
@@ -171,7 +182,7 @@ contract FulfillTest is Test {
             console.log("Test skipped: MAINNET_RPC_URL not defined");
             return;
         }
-
+        luckyBuy.reconcileBalance();
         // Fund the contract treasury
         (bool success, ) = address(luckyBuy).call{value: FUND_AMOUNT}("");
         assertEq(success, true);
@@ -215,7 +226,7 @@ contract FulfillTest is Test {
             orderHash,
             REWARD
         );
-
+        luckyBuy.reconcileBalance();
         assertEq(luckyBuy.commitBalance(), COMMIT_AMOUNT);
 
         // Backend sees the event, it performs its own validation of the event and then signs valid commits. It broadcasts the fulfillment tx.
@@ -272,7 +283,7 @@ contract FulfillTest is Test {
 
         // fulfill the order
         luckyBuy.fulfill(0, TARGET, DATA, REWARD, TOKEN, TOKEN_ID, signature);
-
+        luckyBuy.reconcileBalance();
         assertEq(nft.ownerOf(TOKEN_ID), RECEIVER);
 
         vm.expectRevert(LuckyBuy.AlreadyFulfilled.selector);
@@ -292,6 +303,8 @@ contract FulfillTest is Test {
             console.log("Test skipped: MAINNET_RPC_URL not defined");
             return;
         }
+
+        luckyBuy.reconcileBalance();
 
         uint256 protocolFee = 100;
 
@@ -330,6 +343,7 @@ contract FulfillTest is Test {
             REWARD, // reward
             commitFee // fee
         );
+
         vm.prank(RECEIVER);
         luckyBuy.commit{value: COMMIT_AMOUNT + commitFee}(
             RECEIVER,
@@ -339,6 +353,7 @@ contract FulfillTest is Test {
             REWARD
         );
 
+        luckyBuy.reconcileBalance();
         vm.prank(user2);
         luckyBuy.commit{value: COMMIT_AMOUNT + commitFee}(
             user2,
@@ -348,6 +363,7 @@ contract FulfillTest is Test {
             REWARD
         );
 
+        luckyBuy.reconcileBalance();
         (
             uint256 id,
             address storedReceiver,
@@ -389,7 +405,7 @@ contract FulfillTest is Test {
         console.log("Protocol Balance:", protocolBalance);
         // fulfill the order
         luckyBuy.fulfill(0, TARGET, DATA, REWARD, TOKEN, TOKEN_ID, signature);
-
+        luckyBuy.reconcileBalance();
         //
         console.log(
             "Treasury Balance:",
@@ -421,7 +437,7 @@ contract FulfillTest is Test {
             TOKEN_ID,
             user2Signature
         );
-
+        luckyBuy.reconcileBalance();
         // check the balance of the contract
         // One commit was returned to the user and the other was used to fulfill the order, the fulfill is kept.
         assertEq(address(luckyBuy).balance, FUND_AMOUNT + commitFee);
@@ -435,7 +451,7 @@ contract FulfillTest is Test {
             console.log("Test skipped: MAINNET_RPC_URL not defined");
             return;
         }
-
+        luckyBuy.reconcileBalance();
         address currentOwner = nft.ownerOf(TOKEN_ID);
 
         (bool success, ) = address(luckyBuy).call{value: FUND_AMOUNT}("");
@@ -475,7 +491,7 @@ contract FulfillTest is Test {
             orderHash,
             REWARD
         );
-
+        luckyBuy.reconcileBalance();
         // fulfill the order
         luckyBuy.fulfill(
             0,
@@ -486,7 +502,7 @@ contract FulfillTest is Test {
             TOKEN_ID,
             fail_signature
         );
-
+        luckyBuy.reconcileBalance();
         assertEq(nft.ownerOf(TOKEN_ID), currentOwner);
         assertEq(address(luckyBuy).balance, balance + FAIL_COMMIT_AMOUNT);
         assertEq(luckyBuy.isFulfilled(0), true);
@@ -499,7 +515,7 @@ contract FulfillTest is Test {
             console.log("Test skipped: MAINNET_RPC_URL not defined");
             return;
         }
-
+        luckyBuy.reconcileBalance();
         uint256 protocolFee = 100;
 
         vm.prank(admin);
@@ -550,7 +566,7 @@ contract FulfillTest is Test {
             orderHash,
             REWARD
         );
-
+        luckyBuy.reconcileBalance();
         assertEq(luckyBuy.commitBalance(), COMMIT_AMOUNT);
         assertEq(luckyBuy.protocolBalance(), commitFee);
 
@@ -567,7 +583,7 @@ contract FulfillTest is Test {
 
         // fulfill the order
         luckyBuy.fulfill(0, TARGET, DATA, REWARD, TOKEN, TOKEN_ID, signature);
-
+        luckyBuy.reconcileBalance();
         assertEq(nft.ownerOf(TOKEN_ID), RECEIVER);
 
         vm.expectRevert(LuckyBuy.AlreadyFulfilled.selector);
