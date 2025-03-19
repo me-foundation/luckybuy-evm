@@ -55,7 +55,8 @@ contract LuckyBuy is
         address token,
         uint256 tokenId,
         uint256 amount,
-        address receiver
+        address receiver,
+        uint256 fee
     );
     event MaxRewardUpdated(uint256 oldMaxReward, uint256 newMaxReward);
     event ProtocolFeeUpdated(uint256 oldProtocolFee, uint256 newProtocolFee);
@@ -107,16 +108,18 @@ contract LuckyBuy is
         if (receiver_ == address(0)) revert InvalidReceiver();
         if (reward_ > maxReward) revert InvalidReward();
         if (reward_ < minReward) revert InvalidReward();
-        if (msg.value > reward_) revert InvalidAmount();
+
+        uint256 amountWithoutFee = calculateContributionWithoutFee(msg.value);
+
+        if (amountWithoutFee > reward_) revert InvalidAmount();
         if (reward_ == 0) revert InvalidReward();
 
-        if ((msg.value * BASE_POINTS) / reward_ > BASE_POINTS)
+        if ((amountWithoutFee * BASE_POINTS) / reward_ > BASE_POINTS)
             revert InvalidAmount();
 
         uint256 commitId = luckyBuys.length;
         uint256 userCounter = luckyBuyCount[receiver_]++;
 
-        uint256 amountWithoutFee = calculateContributionWithoutFee(msg.value);
         uint256 fee = msg.value - amountWithoutFee;
 
         feesPaid[commitId] = fee;
@@ -196,6 +199,7 @@ contract LuckyBuy is
         if (cosigner != commitData.cosigner) revert InvalidCosigner();
         if (!isCosigner[cosigner]) revert InvalidCosigner();
 
+        // Collect the commit balance and protocol fees
         // transfer the commit balance to the contract
         balance += commitData.amount;
         commitBalance -= commitData.amount;
@@ -220,7 +224,8 @@ contract LuckyBuy is
                 odds,
                 win,
                 token_,
-                tokenId_
+                tokenId_,
+                protocolFeesPaid
             );
         } else {
             // emit the failure
@@ -233,7 +238,8 @@ contract LuckyBuy is
                 address(0),
                 0,
                 0,
-                commitData.receiver
+                commitData.receiver,
+                protocolFeesPaid
             );
         }
     }
@@ -247,7 +253,8 @@ contract LuckyBuy is
         uint256 odds_,
         bool win_,
         address token_,
-        uint256 tokenId_
+        uint256 tokenId_,
+        uint256 protocolFeesPaid
     ) internal {
         // subtract the order amount from the contract balance
         balance -= orderAmount_;
@@ -265,7 +272,8 @@ contract LuckyBuy is
                 token_,
                 tokenId_,
                 orderAmount_,
-                commitData.receiver
+                commitData.receiver,
+                protocolFeesPaid
             );
         } else {
             // Order failed, transfer the eth commit + fees back to the receiver
@@ -287,7 +295,8 @@ contract LuckyBuy is
                 address(0),
                 0,
                 transferAmount,
-                commitData.receiver
+                commitData.receiver,
+                protocolFeesPaid
             );
         }
     }

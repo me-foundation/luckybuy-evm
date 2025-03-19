@@ -17,7 +17,7 @@ import "src/LuckyBuy.sol";
 //   --data-raw '{"items":[{"key":"0x415a82e77642113701fe190554fddd7701c3b262:8295","token":"0x415a82e77642113701fe190554fddd7701c3b262:8295","is1155":false,"source":"opensea.io","fillType":"trade","quantity":1}],"taker":"0x522B3294E6d06aA25Ad0f1B8891242E335D3B459","source":"magiceden.us","partial":true,"currency":"0x0000000000000000000000000000000000000000","currencyChainId":1,"forwarderChannel":"0x5ebc127fae83ed5bdd91fc6a5f5767E259dF5642","maxFeePerGas":"100000000000","maxPriorityFeePerGas":"100000000000","normalizeRoyalties":false}'
 
 contract MockLuckyBuy is LuckyBuy {
-    constructor() LuckyBuy(0) {}
+    constructor(uint256 protocolFee_) LuckyBuy(protocolFee_) {}
 
     function fulfillOrder(
         address txTo_,
@@ -112,7 +112,7 @@ contract FulfillTest is Test {
             shouldRunTests = true;
 
             vm.startPrank(admin);
-            luckyBuy = new MockLuckyBuy();
+            luckyBuy = new MockLuckyBuy(0);
             vm.deal(admin, 100 ether);
             vm.deal(address(this), 100 ether);
             vm.deal(user2, 100 ether);
@@ -125,7 +125,7 @@ contract FulfillTest is Test {
         }
     }
 
-    function test_baseline_fulfill() public {
+    function test_baseline_fulfill_outside_luckybuy() public {
         // Skip the test entirely if we don't have an RPC URL
         if (!shouldRunTests) {
             console.log("Test skipped: MAINNET_RPC_URL not defined");
@@ -215,6 +215,8 @@ contract FulfillTest is Test {
             orderHash,
             REWARD
         );
+
+        assertEq(luckyBuy.commitBalance(), COMMIT_AMOUNT);
 
         // Backend sees the event, it performs its own validation of the event and then signs valid commits. It broadcasts the fulfillment tx.
 
@@ -454,6 +456,93 @@ contract FulfillTest is Test {
         assertEq(nft.ownerOf(TOKEN_ID), currentOwner);
         assertEq(address(luckyBuy).balance, balance + FAIL_COMMIT_AMOUNT);
         assertEq(luckyBuy.isFulfilled(0), true);
+
+        console.log(luckyBuy.rng(signature));
+    }
+
+    function test_protocol_fee_management() public {
+        if (!shouldRunTests) {
+            console.log("Test skipped: MAINNET_RPC_URL not defined");
+            return;
+        }
+
+        uint256 protocolFee = 100;
+
+        vm.prank(admin);
+        luckyBuy.setProtocolFee(protocolFee);
+
+        // Fund the contract treasury
+        (bool success, ) = address(luckyBuy).call{value: FUND_AMOUNT}("");
+        console.log(address(luckyBuy).balance);
+
+        assertEq(success, true);
+        assertEq(luckyBuy.balance(), FUND_AMOUNT);
+        assertEq(address(luckyBuy).balance, FUND_AMOUNT);
+        assertEq(luckyBuy.protocolBalance(), 0);
+
+        bytes32 orderHash = luckyBuy.hashOrder(
+            TARGET,
+            REWARD,
+            DATA,
+            TOKEN,
+            TOKEN_ID
+        );
+
+        assertEq(orderHash, TypescriptOrderHash);
+
+        uint256 seed = 12345; // User provides this data
+
+        uint256 commitFee = luckyBuy.calculateFee(COMMIT_AMOUNT);
+        // User submits the commit data from the back end with their payment to the contract
+        // vm.expectEmit(true, true, true, false);
+        // emit Commit(
+        //     RECEIVER, // indexed sender
+        //     0, // indexed commitId (first commit, so ID is 0)
+        //     RECEIVER, // indexed receiver
+        //     cosigner, // cosigner
+        //     seed, // seed (12345)
+        //     0, // counter (first commit, so counter is 0)
+        //     orderHash, // orderHash
+        //     COMMIT_AMOUNT, // amount
+        //     REWARD, // reward
+        //     commitFee
+        // );
+
+        vm.prank(RECEIVER);
+        luckyBuy.commit{value: COMMIT_AMOUNT + commitFee}(
+            RECEIVER,
+            cosigner,
+            seed,
+            orderHash,
+            REWARD
+        );
+
+        assertEq(luckyBuy.commitBalance(), COMMIT_AMOUNT);
+        assertEq(luckyBuy.protocolBalance(), commitFee);
+
+        bytes32 onChainHash = luckyBuy.hashLuckyBuy(0);
+
+        address recoveredFromOffchain = luckyBuy.mockRecover(digest, signature);
+        address recoveredFromOnchain = luckyBuy.mockRecover(
+            onChainHash,
+            signature
+        );
+
+        assertEq(recoveredFromOffchain, cosigner);
+        assertEq(recoveredFromOnchain, cosigner);
+
+        // fulfill the order
+        luckyBuy.fulfill(0, TARGET, DATA, REWARD, TOKEN, TOKEN_ID, signature);
+
+        assertEq(nft.ownerOf(TOKEN_ID), RECEIVER);
+
+        vm.expectRevert(LuckyBuy.AlreadyFulfilled.selector);
+        luckyBuy.fulfill(0, TARGET, DATA, REWARD, TOKEN, TOKEN_ID, signature);
+        // check the balance of the contract
+        assertEq(
+            address(luckyBuy).balance,
+            FUND_AMOUNT + (COMMIT_AMOUNT - REWARD) + commitFee
+        );
 
         console.log(luckyBuy.rng(signature));
     }
