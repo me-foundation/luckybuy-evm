@@ -111,11 +111,12 @@ contract LuckyBuy is
         if (receiver_ == address(0)) revert InvalidReceiver();
         if (reward_ > maxReward) revert InvalidReward();
         if (reward_ < minReward) revert InvalidReward();
+        if (reward_ == 0) revert InvalidReward();
 
+        // commit amount should be commit + (reward * protocolFee / BASE_POINTS)
         uint256 amountWithoutFee = calculateContributionWithoutFee(msg.value);
 
         if (amountWithoutFee > reward_) revert InvalidAmount();
-        if (reward_ == 0) revert InvalidReward();
 
         if ((amountWithoutFee * BASE_POINTS) / reward_ > BASE_POINTS)
             revert InvalidAmount();
