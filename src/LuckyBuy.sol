@@ -223,7 +223,6 @@ contract LuckyBuy is
         uint256 rng = _rng(signature_);
         bool win = rng < odds;
 
-        // We only need this for logging
         if (win) {
             _handleWin(
                 commitData,
