@@ -58,7 +58,8 @@ contract LuckyBuy is
         uint256 tokenId,
         uint256 amount,
         address receiver,
-        uint256 fee
+        uint256 fee,
+        bytes32 digest
     );
     event MaxRewardUpdated(uint256 oldMaxReward, uint256 newMaxReward);
     event ProtocolFeeUpdated(uint256 oldProtocolFee, uint256 newProtocolFee);
@@ -201,8 +202,9 @@ contract LuckyBuy is
         // validate the reward amount
         if (orderAmount_ != commitData.reward) revert InvalidAmount();
 
-        // hash commit, check signature
-        address cosigner = verify(commitData, signature_);
+        // hash commit, check signature. digest is needed later for logging
+        bytes32 digest = hash(commitData);
+        address cosigner = _verifyDigest(digest, signature_);
         if (cosigner != commitData.cosigner) revert InvalidCosigner();
         if (!isCosigner[cosigner]) revert InvalidCosigner();
 
@@ -221,6 +223,7 @@ contract LuckyBuy is
         uint256 rng = _rng(signature_);
         bool win = rng < odds;
 
+        // We only need this for logging
         if (win) {
             _handleWin(
                 commitData,
@@ -232,7 +235,8 @@ contract LuckyBuy is
                 win,
                 token_,
                 tokenId_,
-                protocolFeesPaid
+                protocolFeesPaid,
+                digest
             );
         } else {
             // emit the failure
@@ -246,7 +250,8 @@ contract LuckyBuy is
                 0,
                 0,
                 commitData.receiver,
-                protocolFeesPaid
+                protocolFeesPaid,
+                digest
             );
         }
     }
@@ -291,7 +296,8 @@ contract LuckyBuy is
         bool win_,
         address token_,
         uint256 tokenId_,
-        uint256 protocolFeesPaid
+        uint256 protocolFeesPaid,
+        bytes32 digest
     ) internal {
         // execute the market data to transfer the nft
         bool success = _fulfillOrder(marketplace_, orderData_, orderAmount_);
@@ -309,7 +315,8 @@ contract LuckyBuy is
                 tokenId_,
                 orderAmount_,
                 commitData.receiver,
-                protocolFeesPaid
+                protocolFeesPaid,
+                digest
             );
         } else {
             // Order failed, transfer the eth commit + fees back to the receiver
@@ -333,7 +340,8 @@ contract LuckyBuy is
                 0,
                 transferAmount,
                 commitData.receiver,
-                protocolFeesPaid
+                protocolFeesPaid,
+                digest
             );
         }
     }
