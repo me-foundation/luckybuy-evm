@@ -113,7 +113,6 @@ contract LuckyBuy is
         if (reward_ < minReward) revert InvalidReward();
         if (reward_ == 0) revert InvalidReward();
 
-        // commit amount should be commit + (reward * protocolFee / BASE_POINTS)
         uint256 fee = _calculateFee(reward_);
         uint256 amountWithoutFee = msg.value - fee;
 
