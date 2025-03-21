@@ -952,6 +952,10 @@ contract TestLuckyBuyCommit is Test {
     function testExpireCommit() public {
         vm.startPrank(admin);
         luckyBuy.setCommitExpireTime(1 days);
+
+        vm.expectRevert(LuckyBuy.InvalidCommitExpireTime.selector);
+        luckyBuy.setCommitExpireTime(0);
+
         vm.stopPrank();
 
         vm.deal(address(this), amount);
