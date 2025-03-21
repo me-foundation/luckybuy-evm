@@ -959,4 +959,6 @@ contract TestLuckyBuyCommit is Test {
 
         luckyBuy.expireCommit(0);
     }
+
+    receive() external payable {}
 }
