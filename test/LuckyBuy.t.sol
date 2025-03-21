@@ -955,6 +955,9 @@ contract TestLuckyBuyCommit is Test {
         vm.stopPrank();
 
         vm.deal(address(this), amount);
+
+        uint256 initialBalance = address(this).balance;
+
         luckyBuy.commit{value: amount}(
             address(this),
             cosigner,
@@ -963,8 +966,15 @@ contract TestLuckyBuyCommit is Test {
             reward
         );
 
+        assertEq(address(this).balance, initialBalance - amount);
+
         vm.warp(block.timestamp + 2 days);
 
+        luckyBuy.expireCommit(0);
+
+        assertEq(address(this).balance, initialBalance);
+
+        vm.expectRevert(LuckyBuy.CommitIsExpired.selector);
         luckyBuy.expireCommit(0);
     }
 
@@ -981,6 +991,9 @@ contract TestLuckyBuyCommit is Test {
             orderHash,
             reward
         );
+
+        vm.expectRevert(LuckyBuy.CommitNotExpired.selector);
+        luckyBuy.expireCommit(0);
 
         vm.warp(block.timestamp + 2 days);
 
