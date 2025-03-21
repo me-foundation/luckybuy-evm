@@ -373,17 +373,6 @@ contract LuckyBuy is
         emit Withdrawal(msg.sender, currentBalance);
     }
 
-    /// @notice Calculates contribution amount after removing fee
-    /// @param amount The original amount including fee
-    /// @return The contribution amount without the fee
-    /// @dev Uses formula: contribution = (amount * FEE_DENOMINATOR) / (FEE_DENOMINATOR + feePercent)
-    /// @dev This ensures fee isn't charged on the fee portion itself
-    function calculateContributionWithoutFee(
-        uint256 amount
-    ) public view returns (uint256) {
-        return (amount * BASE_POINTS) / (BASE_POINTS + protocolFee);
-    }
-
     /// @notice Calculates fee amount based on input amount and fee percentage
     /// @param _amount The amount to calculate fee on
     /// @return The calculated fee amount
