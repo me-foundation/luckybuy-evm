@@ -114,7 +114,8 @@ contract LuckyBuy is
         if (reward_ == 0) revert InvalidReward();
 
         // commit amount should be commit + (reward * protocolFee / BASE_POINTS)
-        uint256 amountWithoutFee = calculateContributionWithoutFee(msg.value);
+        uint256 fee = _calculateFee(reward_);
+        uint256 amountWithoutFee = msg.value - fee;
 
         if (amountWithoutFee > reward_) revert InvalidAmount();
 
@@ -123,8 +124,6 @@ contract LuckyBuy is
 
         uint256 commitId = luckyBuys.length;
         uint256 userCounter = luckyBuyCount[receiver_]++;
-
-        uint256 fee = msg.value - amountWithoutFee;
 
         feesPaid[commitId] = fee;
         protocolBalance += fee;

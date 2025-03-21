@@ -753,7 +753,7 @@ contract TestLuckyBuyCommit is Test {
         luckyBuy.setProtocolFee(protocolFee);
         vm.stopPrank();
 
-        uint256 fee = luckyBuy.calculateFee(amount);
+        uint256 fee = luckyBuy.calculateFee(reward);
         uint256 amountWithFee = amount + fee;
 
         vm.startPrank(user);
