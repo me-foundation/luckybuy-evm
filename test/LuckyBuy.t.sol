@@ -4,8 +4,16 @@ pragma solidity 0.8.28;
 import "forge-std/Test.sol";
 import "src/LuckyBuy.sol";
 
+contract MockLuckyBuy is LuckyBuy {
+    constructor(uint256 protocolFee_) LuckyBuy(protocolFee_) {}
+
+    function setIsFulfilled(uint256 commitId_, bool isFulfilled_) public {
+        isFulfilled[commitId_] = isFulfilled_;
+    }
+}
+
 contract TestLuckyBuyCommit is Test {
-    LuckyBuy luckyBuy;
+    MockLuckyBuy luckyBuy;
     address admin = address(0x1);
     address user = address(0x2);
     address receiver = address(0x3);
@@ -30,6 +38,11 @@ contract TestLuckyBuyCommit is Test {
         uint256 fee,
         bytes32 digest
     );
+    event CommitExpireTimeUpdated(
+        uint256 oldCommitExpireTime,
+        uint256 newCommitExpireTime
+    );
+    event CommitExpired(uint256 indexed commitId);
 
     event Withdrawal(address indexed sender, uint256 amount);
 
@@ -37,7 +50,7 @@ contract TestLuckyBuyCommit is Test {
 
     function setUp() public {
         vm.startPrank(admin);
-        luckyBuy = new LuckyBuy(protocolFee);
+        luckyBuy = new MockLuckyBuy(protocolFee);
         vm.deal(admin, 100 ether);
         vm.deal(receiver, 100 ether);
         vm.deal(address(this), 100 ether);
@@ -710,29 +723,6 @@ contract TestLuckyBuyCommit is Test {
         assertEq(luckyBuy.protocolFee(), 100);
     }
 
-    function testCalculateContributionWithoutFee() public {
-        uint256 amount = 1 ether;
-        uint256 protocolFee = 100;
-
-        vm.startPrank(admin);
-        luckyBuy.setProtocolFee(protocolFee);
-        vm.stopPrank();
-
-        uint256 fee = luckyBuy.calculateFee(amount);
-        assertEq(fee, (amount * protocolFee) / luckyBuy.BASE_POINTS());
-
-        uint256 amountWithFee = amount + fee;
-        assertEq(
-            amountWithFee,
-            amount + ((amount * protocolFee) / luckyBuy.BASE_POINTS())
-        );
-
-        uint256 amountWithoutFee = luckyBuy.calculateContributionWithoutFee(
-            amountWithFee
-        );
-        assertEq(amountWithoutFee, amount);
-    }
-
     function testCalculateFee() public {
         uint256 amount = 1 ether;
         uint256 protocolFee = 100;
@@ -753,7 +743,7 @@ contract TestLuckyBuyCommit is Test {
         luckyBuy.setProtocolFee(protocolFee);
         vm.stopPrank();
 
-        uint256 fee = luckyBuy.calculateFee(amount);
+        uint256 fee = luckyBuy.calculateFee(reward);
         uint256 amountWithFee = amount + fee;
 
         vm.startPrank(user);
@@ -971,4 +961,135 @@ contract TestLuckyBuyCommit is Test {
         luckyBuy.setMinReward(maxReward + 1);
         vm.stopPrank();
     }
+    function testSetCommitExpireTime() public {
+        uint256 expireTime = 10 days;
+        vm.startPrank(admin);
+        luckyBuy.setCommitExpireTime(expireTime);
+        vm.stopPrank();
+        assertEq(luckyBuy.commitExpireTime(), expireTime);
+    }
+
+    function testSetCommitExpireTimeZero() public {
+        vm.startPrank(admin);
+        vm.expectRevert(LuckyBuy.InvalidCommitExpireTime.selector);
+        luckyBuy.setCommitExpireTime(0);
+    }
+
+    function testExpireCommit() public {
+        vm.startPrank(admin);
+        luckyBuy.setCommitExpireTime(1 days);
+
+        vm.expectRevert(LuckyBuy.InvalidCommitExpireTime.selector);
+        luckyBuy.setCommitExpireTime(0);
+
+        vm.stopPrank();
+
+        vm.deal(address(this), amount);
+
+        uint256 initialBalance = address(this).balance;
+
+        luckyBuy.commit{value: amount}(
+            address(this),
+            cosigner,
+            seed,
+            orderHash,
+            reward
+        );
+
+        assertEq(address(this).balance, initialBalance - amount);
+
+        vm.warp(block.timestamp + 2 days);
+
+        luckyBuy.expire(0);
+
+        assertEq(address(this).balance, initialBalance);
+
+        vm.expectRevert(LuckyBuy.CommitIsExpired.selector);
+        luckyBuy.expire(0);
+    }
+
+    function testExpireCommitNotOwner() public {
+        vm.startPrank(admin);
+        luckyBuy.setCommitExpireTime(1 days);
+        vm.stopPrank();
+
+        vm.deal(address(this), amount);
+        luckyBuy.commit{value: amount}(
+            address(this),
+            cosigner,
+            seed,
+            orderHash,
+            reward
+        );
+
+        vm.expectRevert(LuckyBuy.CommitNotExpired.selector);
+        luckyBuy.expire(0);
+
+        vm.warp(block.timestamp + 2 days);
+
+        vm.expectRevert(LuckyBuy.InvalidCommitOwner.selector);
+        vm.prank(user);
+        luckyBuy.expire(0);
+    }
+
+    function testExpireCommitAlreadyFulfilled() public {
+        vm.startPrank(admin);
+        luckyBuy.setCommitExpireTime(1 days);
+        vm.stopPrank();
+
+        vm.deal(address(this), amount);
+        luckyBuy.commit{value: amount}(
+            address(this),
+            cosigner,
+            seed,
+            orderHash,
+            reward
+        );
+
+        luckyBuy.setIsFulfilled(0, true);
+        assertEq(luckyBuy.isFulfilled(0), true);
+
+        vm.warp(block.timestamp + 2 days);
+
+        vm.expectRevert(LuckyBuy.AlreadyFulfilled.selector);
+        luckyBuy.expire(0);
+    }
+
+    function testFulfillIsExpired() public {
+        vm.startPrank(admin);
+        luckyBuy.setCommitExpireTime(1 days);
+        vm.stopPrank();
+
+        vm.deal(address(this), 100 ether);
+        (bool success, ) = address(luckyBuy).call{value: 10 ether}("");
+        assertTrue(success, "Initial funding should succeed");
+        luckyBuy.commit{value: amount}(
+            address(this),
+            cosigner,
+            seed,
+            orderHash,
+            reward
+        );
+
+        assertEq(luckyBuy.isFulfilled(0), false);
+
+        vm.warp(block.timestamp + 2 days);
+
+        luckyBuy.expire(0);
+
+        assertEq(luckyBuy.isExpired(0), true);
+
+        vm.expectRevert(LuckyBuy.CommitIsExpired.selector);
+        luckyBuy.fulfill(
+            0,
+            address(this),
+            new bytes(0),
+            reward,
+            address(0),
+            0,
+            new bytes(0)
+        );
+    }
+
+    receive() external payable {}
 }

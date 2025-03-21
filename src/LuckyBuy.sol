@@ -22,13 +22,19 @@ contract LuckyBuy is
     uint256 public treasuryBalance; // The contract balance
     uint256 public commitBalance; // The open commit balances
     uint256 public protocolBalance; // The protocol fees for the open commits
-    uint256 public maxReward = 30 ether;
+    uint256 public maxReward = 50 ether;
     uint256 public protocolFee = 0;
     uint256 public minReward = BASE_POINTS;
+
+    uint256 public commitExpireTime = 1 days;
+    mapping(uint256 commitId => uint256 expiresAt) public commitExpiresAt;
+
+    uint256 public constant MIN_COMMIT_EXPIRE_TIME = 1 minutes;
 
     mapping(address cosigner => bool active) public isCosigner;
     mapping(address receiver => uint256 counter) public luckyBuyCount;
     mapping(uint256 commitId => bool fulfilled) public isFulfilled;
+    mapping(uint256 commitId => bool expired) public isExpired;
     // We track this because we can change the fees at any time. This allows open commits to be fulfilled/returned with the fees at the time of commit
     mapping(uint256 commitId => uint256 fee) public feesPaid;
 
@@ -65,11 +71,17 @@ contract LuckyBuy is
     event Withdrawal(address indexed sender, uint256 amount);
     event Deposit(address indexed sender, uint256 amount);
     event MinRewardUpdated(uint256 oldMinReward, uint256 newMinReward);
+    event CommitExpireTimeUpdated(
+        uint256 oldCommitExpireTime,
+        uint256 newCommitExpireTime
+    );
+    event CommitExpired(uint256 indexed commitId, bytes32 digest);
 
     error AlreadyCosigner();
     error AlreadyFulfilled();
     error InsufficientBalance();
     error InvalidAmount();
+    error InvalidCommitOwner();
     error InvalidCosigner();
     error InvalidOrderHash();
     error InvalidProtocolFee();
@@ -78,6 +90,16 @@ contract LuckyBuy is
     error FulfillmentFailed();
     error InvalidCommitId();
     error WithdrawalFailed();
+    error InvalidCommitExpireTime();
+    error CommitIsExpired();
+    error CommitNotExpired();
+    error TransferFailed();
+
+    modifier onlyCommitOwner(uint256 commitId_) {
+        if (luckyBuys[commitId_].receiver != msg.sender)
+            revert InvalidCommitOwner();
+        _;
+    }
 
     /// @notice Constructor initializes the contract and handles any pre-existing balance
     /// @dev Sets up EIP712 domain separator and deposits any ETH sent during deployment
@@ -113,11 +135,12 @@ contract LuckyBuy is
         if (receiver_ == address(0)) revert InvalidReceiver();
         if (reward_ > maxReward) revert InvalidReward();
         if (reward_ < minReward) revert InvalidReward();
+        if (reward_ == 0) revert InvalidReward();
 
-        uint256 amountWithoutFee = calculateContributionWithoutFee(msg.value);
+        uint256 fee = _calculateFee(reward_);
+        uint256 amountWithoutFee = msg.value - fee;
 
         if (amountWithoutFee > reward_) revert InvalidAmount();
-        if (reward_ == 0) revert InvalidReward();
 
         // Check if odds are greater than 100%
         if ((amountWithoutFee * BASE_POINTS) / reward_ > BASE_POINTS)
@@ -125,8 +148,6 @@ contract LuckyBuy is
 
         uint256 commitId = luckyBuys.length;
         uint256 userCounter = luckyBuyCount[receiver_]++;
-
-        uint256 fee = msg.value - amountWithoutFee;
 
         feesPaid[commitId] = fee;
         protocolBalance += fee;
@@ -144,6 +165,7 @@ contract LuckyBuy is
         });
 
         luckyBuys.push(commitData);
+        commitExpiresAt[commitId] = block.timestamp + commitExpireTime;
 
         bytes32 digest = hash(commitData);
         commitIdByDigest[digest] = commitId;
@@ -187,6 +209,7 @@ contract LuckyBuy is
         if (msg.value > 0) _depositTreasury(msg.value);
         if (orderAmount_ > treasuryBalance) revert InsufficientBalance();
         if (isFulfilled[commitId_]) revert AlreadyFulfilled();
+        if (isExpired[commitId_]) revert CommitIsExpired();
         if (commitId_ >= luckyBuys.length) revert InvalidCommitId();
 
         // mark the commit as fulfilled
@@ -330,7 +353,11 @@ contract LuckyBuy is
             treasuryBalance -= transferAmount;
 
             // This can also revert if the receiver is a contract that doesn't accept ETH
-            payable(commitData.receiver).transfer(transferAmount);
+            (bool success, ) = commitData.receiver.call{value: transferAmount}(
+                ""
+            );
+            if (!success) revert TransferFailed();
+
             emit Fulfillment(
                 msg.sender,
                 commitData.id,
@@ -383,6 +410,37 @@ contract LuckyBuy is
         emit Withdrawal(msg.sender, currentBalance);
     }
 
+    /// @notice Allows the commit owner to expire a commit in the event that the commit is not or cannot be fulfilled
+    /// @param commitId_ ID of the commit to expire
+    /// @dev Only callable by the commit owner
+    /// @dev Emits a CommitExpired event
+    function expire(
+        uint256 commitId_
+    ) external onlyCommitOwner(commitId_) nonReentrant {
+        if (commitId_ >= luckyBuys.length) revert InvalidCommitId();
+        if (isFulfilled[commitId_]) revert AlreadyFulfilled();
+        if (isExpired[commitId_]) revert CommitIsExpired();
+        if (block.timestamp < commitExpiresAt[commitId_])
+            revert CommitNotExpired();
+
+        isExpired[commitId_] = true;
+
+        CommitData memory commitData = luckyBuys[commitId_];
+
+        uint256 commitAmount = commitData.amount;
+        commitBalance -= commitAmount;
+
+        uint256 protocolFeesPaid = feesPaid[commitId_];
+        protocolBalance -= protocolFeesPaid;
+
+        uint256 transferAmount = commitAmount + protocolFeesPaid;
+
+        (bool success, ) = payable(msg.sender).call{value: transferAmount}("");
+        if (!success) revert TransferFailed();
+
+        emit CommitExpired(commitId_, hash(commitData));
+    }
+
     /// @notice Calculates contribution amount after removing fee
     /// @param amount The original amount including fee
     /// @return The contribution amount without the fee
@@ -432,6 +490,20 @@ contract LuckyBuy is
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         isCosigner[cosigner_] = false;
         emit CosignerRemoved(cosigner_);
+    }
+
+    /// @notice Sets the commit expire time.
+    /// @param commitExpireTime_ New commit expire time
+    /// @dev Only callable by admin role
+    /// @dev Emits a CommitExpireTimeUpdated event
+    function setCommitExpireTime(
+        uint256 commitExpireTime_
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (commitExpireTime_ < MIN_COMMIT_EXPIRE_TIME)
+            revert InvalidCommitExpireTime();
+        uint256 oldCommitExpireTime = commitExpireTime;
+        commitExpireTime = commitExpireTime_;
+        emit CommitExpireTimeUpdated(oldCommitExpireTime, commitExpireTime_);
     }
 
     /// @notice Sets the maximum allowed reward
