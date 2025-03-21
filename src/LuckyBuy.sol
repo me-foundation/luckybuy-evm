@@ -25,11 +25,15 @@ contract LuckyBuy is
     uint256 public maxReward = 30 ether;
     uint256 public protocolFee = 0;
 
+    uint256 public commitExpireTime = 1 days;
+    mapping(uint256 commitId => uint256 expiresAt) public commitExpiresAt;
+
     uint256 public constant minReward = BASE_POINTS;
 
     mapping(address cosigner => bool active) public isCosigner;
     mapping(address receiver => uint256 counter) public luckyBuyCount;
     mapping(uint256 commitId => bool fulfilled) public isFulfilled;
+    mapping(uint256 commitId => bool expired) public isExpired;
     // We track this because we can change the fees at any time. This allows open commits to be fulfilled/returned with the fees at the time of commit
     mapping(uint256 commitId => uint256 fee) public feesPaid;
 
@@ -65,10 +69,17 @@ contract LuckyBuy is
     event ProtocolFeeUpdated(uint256 oldProtocolFee, uint256 newProtocolFee);
     event Withdrawal(address indexed sender, uint256 amount);
     event Deposit(address indexed sender, uint256 amount);
+    event CommitExpireTimeUpdated(
+        uint256 oldCommitExpireTime,
+        uint256 newCommitExpireTime
+    );
+    event CommitExpired(uint256 indexed commitId);
+
     error AlreadyCosigner();
     error AlreadyFulfilled();
     error InsufficientBalance();
     error InvalidAmount();
+    error InvalidCommitOwner();
     error InvalidCosigner();
     error InvalidOrderHash();
     error InvalidProtocolFee();
@@ -77,6 +88,15 @@ contract LuckyBuy is
     error FulfillmentFailed();
     error InvalidCommitId();
     error WithdrawalFailed();
+    error InvalidCommitExpireTime();
+    error CommitIsExpired();
+    error CommitNotExpired();
+
+    modifier onlyCommitOwner(uint256 commitId_) {
+        if (luckyBuys[commitId_].receiver != msg.sender)
+            revert InvalidCommitOwner();
+        _;
+    }
 
     /// @notice Constructor initializes the contract and handles any pre-existing balance
     /// @dev Sets up EIP712 domain separator and deposits any ETH sent during deployment
@@ -142,6 +162,7 @@ contract LuckyBuy is
         });
 
         luckyBuys.push(commitData);
+        commitExpiresAt[commitId] = block.timestamp + commitExpireTime;
 
         bytes32 digest = hash(commitData);
         commitIdByDigest[digest] = commitId;
@@ -185,6 +206,7 @@ contract LuckyBuy is
         if (msg.value > 0) _depositTreasury(msg.value);
         if (orderAmount_ > treasuryBalance) revert InsufficientBalance();
         if (isFulfilled[commitId_]) revert AlreadyFulfilled();
+        if (isExpired[commitId_]) revert CommitIsExpired();
         if (commitId_ >= luckyBuys.length) revert InvalidCommitId();
 
         // mark the commit as fulfilled
@@ -381,6 +403,29 @@ contract LuckyBuy is
         emit Withdrawal(msg.sender, currentBalance);
     }
 
+    function expireCommit(
+        uint256 commitId_
+    ) external onlyCommitOwner(commitId_) {
+        if (commitId_ >= luckyBuys.length) revert InvalidCommitId();
+        if (isFulfilled[commitId_]) revert AlreadyFulfilled();
+        if (isExpired[commitId_]) revert CommitIsExpired();
+        if (block.timestamp < commitExpiresAt[commitId_])
+            revert CommitNotExpired();
+
+        isExpired[commitId_] = true;
+
+        uint256 commitAmount = luckyBuys[commitId_].amount;
+        uint256 protocolFeesPaid = feesPaid[commitId_];
+
+        commitBalance -= commitAmount;
+        protocolBalance -= protocolFeesPaid;
+
+        uint256 transferAmount = commitAmount + protocolFeesPaid;
+        payable(luckyBuys[commitId_].receiver).transfer(transferAmount);
+
+        emit CommitExpired(commitId_);
+    }
+
     /// @notice Calculates contribution amount after removing fee
     /// @param amount The original amount including fee
     /// @return The contribution amount without the fee
@@ -430,6 +475,19 @@ contract LuckyBuy is
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         isCosigner[cosigner_] = false;
         emit CosignerRemoved(cosigner_);
+    }
+
+    /// @notice Sets the commit expire time.
+    /// @param commitExpireTime_ New commit expire time
+    /// @dev Only callable by admin role
+    /// @dev Emits a CommitExpireTimeUpdated event
+    function setCommitExpireTime(
+        uint256 commitExpireTime_
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (commitExpireTime_ < 1 minutes) revert InvalidCommitExpireTime();
+        uint256 oldCommitExpireTime = commitExpireTime;
+        commitExpireTime = commitExpireTime_;
+        emit CommitExpireTimeUpdated(oldCommitExpireTime, commitExpireTime_);
     }
 
     /// @notice Sets the maximum allowed reward
