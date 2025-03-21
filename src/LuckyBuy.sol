@@ -29,6 +29,7 @@ contract LuckyBuy is
     mapping(uint256 commitId => uint256 expiresAt) public commitExpiresAt;
 
     uint256 public constant minReward = BASE_POINTS;
+    uint256 public constant MIN_COMMIT_EXPIRE_TIME = 1 minutes;
 
     mapping(address cosigner => bool active) public isCosigner;
     mapping(address receiver => uint256 counter) public luckyBuyCount;
@@ -494,7 +495,8 @@ contract LuckyBuy is
     function setCommitExpireTime(
         uint256 commitExpireTime_
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (commitExpireTime_ < 1 minutes) revert InvalidCommitExpireTime();
+        if (commitExpireTime_ < MIN_COMMIT_EXPIRE_TIME)
+            revert InvalidCommitExpireTime();
         uint256 oldCommitExpireTime = commitExpireTime;
         commitExpireTime = commitExpireTime_;
         emit CommitExpireTimeUpdated(oldCommitExpireTime, commitExpireTime_);
