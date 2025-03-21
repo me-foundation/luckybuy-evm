@@ -91,6 +91,7 @@ contract LuckyBuy is
     error InvalidCommitExpireTime();
     error CommitIsExpired();
     error CommitNotExpired();
+    error TransferFailed();
 
     modifier onlyCommitOwner(uint256 commitId_) {
         if (luckyBuys[commitId_].receiver != msg.sender)
@@ -350,7 +351,11 @@ contract LuckyBuy is
             treasuryBalance -= transferAmount;
 
             // This can also revert if the receiver is a contract that doesn't accept ETH
-            payable(commitData.receiver).transfer(transferAmount);
+            (bool success, ) = commitData.receiver.call{value: transferAmount}(
+                ""
+            );
+            if (!success) revert TransferFailed();
+
             emit Fulfillment(
                 msg.sender,
                 commitData.id,
@@ -403,9 +408,13 @@ contract LuckyBuy is
         emit Withdrawal(msg.sender, currentBalance);
     }
 
+    /// @notice Allows the commit owner to expire a commit in the event that the commit is not or cannot be fulfilled
+    /// @param commitId_ ID of the commit to expire
+    /// @dev Only callable by the commit owner
+    /// @dev Emits a CommitExpired event
     function expireCommit(
         uint256 commitId_
-    ) external onlyCommitOwner(commitId_) {
+    ) external onlyCommitOwner(commitId_) nonReentrant {
         if (commitId_ >= luckyBuys.length) revert InvalidCommitId();
         if (isFulfilled[commitId_]) revert AlreadyFulfilled();
         if (isExpired[commitId_]) revert CommitIsExpired();
@@ -415,13 +424,15 @@ contract LuckyBuy is
         isExpired[commitId_] = true;
 
         uint256 commitAmount = luckyBuys[commitId_].amount;
-        uint256 protocolFeesPaid = feesPaid[commitId_];
-
         commitBalance -= commitAmount;
+
+        uint256 protocolFeesPaid = feesPaid[commitId_];
         protocolBalance -= protocolFeesPaid;
 
         uint256 transferAmount = commitAmount + protocolFeesPaid;
-        payable(luckyBuys[commitId_].receiver).transfer(transferAmount);
+
+        (bool success, ) = msg.sender.call{value: transferAmount}("");
+        if (!success) revert TransferFailed();
 
         emit CommitExpired(commitId_);
     }

@@ -30,6 +30,11 @@ contract TestLuckyBuyCommit is Test {
         uint256 fee,
         bytes32 digest
     );
+    event CommitExpireTimeUpdated(
+        uint256 oldCommitExpireTime,
+        uint256 newCommitExpireTime
+    );
+    event CommitExpired(uint256 indexed commitId);
 
     event Withdrawal(address indexed sender, uint256 amount);
 
@@ -943,5 +948,38 @@ contract TestLuckyBuyCommit is Test {
         vm.startPrank(admin);
         luckyBuy.setProtocolFee(100);
         vm.stopPrank();
+    }
+
+    function testSetCommitExpireTime() public {
+        uint256 expireTime = 10 days;
+        vm.startPrank(admin);
+        luckyBuy.setCommitExpireTime(expireTime);
+        vm.stopPrank();
+        assertEq(luckyBuy.commitExpireTime(), expireTime);
+    }
+
+    function testSetCommitExpireTimeZero() public {
+        vm.startPrank(admin);
+        vm.expectRevert(LuckyBuy.InvalidCommitExpireTime.selector);
+        luckyBuy.setCommitExpireTime(0);
+    }
+
+    function testExpireCommit() public {
+        vm.startPrank(admin);
+        luckyBuy.setCommitExpireTime(1 days);
+        vm.stopPrank();
+
+        vm.deal(address(this), amount);
+        luckyBuy.commit{value: amount}(
+            address(this),
+            cosigner,
+            seed,
+            orderHash,
+            reward
+        );
+
+        vm.warp(block.timestamp + 2 days);
+
+        luckyBuy.expireCommit(0);
     }
 }
