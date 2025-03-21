@@ -74,7 +74,7 @@ contract LuckyBuy is
         uint256 oldCommitExpireTime,
         uint256 newCommitExpireTime
     );
-    event CommitExpired(uint256 indexed commitId);
+    event CommitExpired(uint256 indexed commitId, bytes32 digest);
 
     error AlreadyCosigner();
     error AlreadyFulfilled();
@@ -412,7 +412,7 @@ contract LuckyBuy is
     /// @param commitId_ ID of the commit to expire
     /// @dev Only callable by the commit owner
     /// @dev Emits a CommitExpired event
-    function expireCommit(
+    function expire(
         uint256 commitId_
     ) external onlyCommitOwner(commitId_) nonReentrant {
         if (commitId_ >= luckyBuys.length) revert InvalidCommitId();
@@ -423,7 +423,9 @@ contract LuckyBuy is
 
         isExpired[commitId_] = true;
 
-        uint256 commitAmount = luckyBuys[commitId_].amount;
+        CommitData memory commitData = luckyBuys[commitId_];
+
+        uint256 commitAmount = commitData.amount;
         commitBalance -= commitAmount;
 
         uint256 protocolFeesPaid = feesPaid[commitId_];
@@ -434,7 +436,7 @@ contract LuckyBuy is
         (bool success, ) = payable(msg.sender).call{value: transferAmount}("");
         if (!success) revert TransferFailed();
 
-        emit CommitExpired(commitId_);
+        emit CommitExpired(commitId_, hash(commitData));
     }
 
     /// @notice Calculates contribution amount after removing fee

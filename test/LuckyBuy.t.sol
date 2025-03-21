@@ -974,12 +974,12 @@ contract TestLuckyBuyCommit is Test {
 
         vm.warp(block.timestamp + 2 days);
 
-        luckyBuy.expireCommit(0);
+        luckyBuy.expire(0);
 
         assertEq(address(this).balance, initialBalance);
 
         vm.expectRevert(LuckyBuy.CommitIsExpired.selector);
-        luckyBuy.expireCommit(0);
+        luckyBuy.expire(0);
     }
 
     function testExpireCommitNotOwner() public {
@@ -997,13 +997,13 @@ contract TestLuckyBuyCommit is Test {
         );
 
         vm.expectRevert(LuckyBuy.CommitNotExpired.selector);
-        luckyBuy.expireCommit(0);
+        luckyBuy.expire(0);
 
         vm.warp(block.timestamp + 2 days);
 
         vm.expectRevert(LuckyBuy.InvalidCommitOwner.selector);
         vm.prank(user);
-        luckyBuy.expireCommit(0);
+        luckyBuy.expire(0);
     }
 
     function testExpireCommitAlreadyFulfilled() public {
@@ -1026,7 +1026,7 @@ contract TestLuckyBuyCommit is Test {
         vm.warp(block.timestamp + 2 days);
 
         vm.expectRevert(LuckyBuy.AlreadyFulfilled.selector);
-        luckyBuy.expireCommit(0);
+        luckyBuy.expire(0);
     }
 
     function testFulfillIsExpired() public {
@@ -1049,7 +1049,7 @@ contract TestLuckyBuyCommit is Test {
 
         vm.warp(block.timestamp + 2 days);
 
-        luckyBuy.expireCommit(0);
+        luckyBuy.expire(0);
 
         assertEq(luckyBuy.isExpired(0), true);
 
