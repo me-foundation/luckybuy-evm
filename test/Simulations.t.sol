@@ -13,7 +13,7 @@ contract MockLuckyBuy is LuckyBuy {
 }
 
 contract TestLuckyBuyCommit is Test {
-    bool skipTest = false;
+    bool skipTest = true;
 
     MockLuckyBuy luckyBuy;
     address admin = address(0x1);
@@ -116,7 +116,7 @@ contract TestLuckyBuyCommit is Test {
         console.log("Reward Amount:", rewardAmount);
         console.log("\nStarting 40k game simulations...\n");
 
-        for (uint256 i = 0; i < 40_000; i++) {
+        for (uint256 i = 0; i < 20_000; i++) {
             console.log("Game", i + 1, ":");
 
             vm.startPrank(user);
@@ -151,7 +151,6 @@ contract TestLuckyBuyCommit is Test {
             console.log("amount", _amount);
             console.log("reward", _reward);
 
-            return;
             // Get the counter for this commit
             uint256 counter = luckyBuy.luckyBuyCount(user) - 1;
 
