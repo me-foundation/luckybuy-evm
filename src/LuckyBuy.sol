@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import "./common/SignatureVerifier.sol";
 
+import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./common/MEAccessControl.sol";
@@ -16,6 +17,11 @@ contract LuckyBuy is
     PRNG,
     ReentrancyGuard
 {
+    // We will not track our supply on this contract. We will mint a yuge amount and never run out on the oe.
+    address public openEditionToken;
+    uint256 public openEditionTokenId;
+    uint256 public openEditionTokenAmount;
+
     CommitData[] public luckyBuys;
     mapping(bytes32 commitDigest => uint256 commitId) public commitIdByDigest;
 
