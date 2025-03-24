@@ -509,11 +509,10 @@ contract LuckyBuy is
     /// @notice Sets the maximum allowed reward
     /// @param maxReward_ New maximum reward value
     /// @dev Only callable by admin role
-    function setMaxReward(
-        uint256 maxReward_
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setMaxReward(uint256 maxReward_) external onlyRole(OPS_ROLE) {
+        uint256 oldMaxReward = maxReward;
         maxReward = maxReward_;
-        emit MaxRewardUpdated(maxReward, maxReward_);
+        emit MaxRewardUpdated(oldMaxReward, maxReward_);
     }
 
     /// @notice Sets the minimum allowed reward
@@ -581,9 +580,7 @@ contract LuckyBuy is
         (success, ) = to.call{value: amount}(data);
     }
 
-    function setProtocolFee(
-        uint256 protocolFee_
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setProtocolFee(uint256 protocolFee_) external onlyRole(OPS_ROLE) {
         if (protocolFee_ > BASE_POINTS) revert InvalidProtocolFee();
         _setProtocolFee(protocolFee_);
     }

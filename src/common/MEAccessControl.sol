@@ -11,9 +11,38 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 contract MEAccessControl is AccessControl {
     bytes32 public constant OPS_ROLE = keccak256("OPS_ROLE");
 
+    error InvalidOwner();
+
     constructor() {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(OPS_ROLE, msg.sender);
+    }
+
+    /// @notice Transfers admin rights to a new address. Admin functions are intentionally not paused
+    /// @param newAdmin Address of the new admin
+    function transferAdmin(
+        address newAdmin
+    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (newAdmin == address(0)) revert InvalidOwner();
+
+        // Grant new admin the default admin role
+        _grantRole(DEFAULT_ADMIN_ROLE, newAdmin);
+        _grantRole(OPS_ROLE, newAdmin);
+
+        // Revoke old admin's roles
+        _revokeRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _revokeRole(OPS_ROLE, msg.sender);
+    }
+    /// @notice Adds a new operations user
+    /// @param user Address to grant operations role to
+    function addOpsUser(address user) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        _grantRole(OPS_ROLE, user);
+    }
+
+    /// @notice Removes an operations user
+    /// @param user Address to revoke operations role from
+    function removeOpsUser(address user) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        _revokeRole(OPS_ROLE, user);
     }
 
     /**
