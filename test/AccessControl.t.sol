@@ -132,7 +132,7 @@ contract AccessControlTest is Test {
         vm.startPrank(ops);
         uint256 newMaxReward = 50 ether;
         vm.expectEmit(false, false, false, true);
-        emit MaxRewardUpdated(30 ether, newMaxReward);
+        emit MaxRewardUpdated(50 ether, newMaxReward);
         luckyBuy.setMaxReward(newMaxReward);
         vm.stopPrank();
 
