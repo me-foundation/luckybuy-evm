@@ -13,11 +13,11 @@ contract MockLuckyBuy is LuckyBuy {
 }
 
 contract TestLuckyBuyCommit is Test {
+    bool skipTest = false;
+
     MockLuckyBuy luckyBuy;
     address admin = address(0x1);
-    address user = address(0x6);
-
-    bool skipTest = true;
+    address user = address(0x2);
 
     uint256 constant COSIGNER_PRIVATE_KEY = 1234;
     address cosigner;
@@ -83,8 +83,14 @@ contract TestLuckyBuyCommit is Test {
         return abi.encodePacked(r, s, v);
     }
 
-    function testCreateCommit() public {
+    function testSimulatePlay() public {
         if (skipTest) return;
+
+        // out of base points
+        uint256 protocolFee = 100;
+        vm.prank(admin);
+        luckyBuy.setProtocolFee(protocolFee);
+
         // Create order hash for a simple ETH transfer - this stays the same for all plays
         bytes32 orderHash = luckyBuy.hashOrder(
             address(0), // to address(0)
@@ -95,21 +101,28 @@ contract TestLuckyBuyCommit is Test {
         );
 
         // Calculate odds: amount/reward = 0.1/1 = 10%
+
         uint256 commitAmount = 0.5 ether;
         uint256 rewardAmount = 1 ether;
+        uint256 feeAmount = luckyBuy.calculateFee(rewardAmount); // This should be .005 ether
+
+        uint256 commitTxAmount = commitAmount + feeAmount;
+        console.log("commitTxAmount", commitTxAmount);
+
         uint256 odds = (commitAmount * 100000) / rewardAmount;
         console.log("\nGame Parameters:");
         console.log("Odds of winning (basis points):", odds); // Should be 1000 (10%)
         console.log("Commit Amount:", commitAmount);
         console.log("Reward Amount:", rewardAmount);
-        console.log("\nStarting 10 game simulations...\n");
+        console.log("\nStarting 40k game simulations...\n");
 
         for (uint256 i = 0; i < 40_000; i++) {
             console.log("Game", i + 1, ":");
 
             vm.startPrank(user);
+            console.log(commitAmount + feeAmount);
             // Create commit
-            uint256 commitId = luckyBuy.commit{value: commitAmount}(
+            uint256 commitId = luckyBuy.commit{value: commitTxAmount}(
                 user, // receiver
                 cosigner, // cosigner
                 seed, // random seed
@@ -118,6 +131,27 @@ contract TestLuckyBuyCommit is Test {
             );
             vm.stopPrank();
 
+            (
+                uint256 _id,
+                address _receiver,
+                address _cosigner,
+                uint256 _seed,
+                uint256 _counter,
+                bytes32 _orderHash,
+                uint256 _amount,
+                uint256 _reward
+            ) = luckyBuy.luckyBuys(commitId);
+
+            console.log("commitId", _id);
+            console.log("receiver", _receiver);
+            console.log("cosigner", _cosigner);
+            console.log("seed", _seed);
+            console.log("counter", _counter);
+            console.logBytes32(_orderHash);
+            console.log("amount", _amount);
+            console.log("reward", _reward);
+
+            return;
             // Get the counter for this commit
             uint256 counter = luckyBuy.luckyBuyCount(user) - 1;
 
