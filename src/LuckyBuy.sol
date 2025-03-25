@@ -484,6 +484,16 @@ contract LuckyBuy is
         return (_amount * protocolFee) / BASE_POINTS;
     }
 
+    function onERC1155Received(
+        address operator,
+        address from,
+        uint256 id,
+        uint256 value,
+        bytes calldata data
+    ) external returns (bytes4) {
+        return this.onERC1155Received.selector;
+    }
+
     // ############################################################
     // ############ GETTERS & SETTERS ############
     // ############################################################
