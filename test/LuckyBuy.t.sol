@@ -953,7 +953,7 @@ contract TestLuckyBuyCommit is Test {
     function testMinRewardUpdateAboveMax() public {
         vm.startPrank(admin);
 
-        uint256 maxReward = 1000;
+        uint256 maxReward = luckyBuy.minReward() * 2;
 
         luckyBuy.setMaxReward(maxReward);
 
@@ -984,6 +984,10 @@ contract TestLuckyBuyCommit is Test {
 
         vm.stopPrank();
 
+        uint256 initialTreasuryBalance = luckyBuy.treasuryBalance();
+        uint256 initialCommitBalance = luckyBuy.commitBalance();
+        uint256 initialProtocolBalance = luckyBuy.protocolBalance();
+
         vm.deal(address(this), amount);
 
         uint256 initialBalance = address(this).balance;
@@ -1003,6 +1007,9 @@ contract TestLuckyBuyCommit is Test {
         luckyBuy.expire(0);
 
         assertEq(address(this).balance, initialBalance);
+        assertEq(luckyBuy.treasuryBalance(), initialTreasuryBalance);
+        assertEq(luckyBuy.commitBalance(), initialCommitBalance);
+        assertEq(luckyBuy.protocolBalance(), initialProtocolBalance);
 
         vm.expectRevert(LuckyBuy.CommitIsExpired.selector);
         luckyBuy.expire(0);

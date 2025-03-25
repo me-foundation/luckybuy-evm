@@ -173,26 +173,19 @@ contract TestLuckyBuyCosigners is Test {
     }
 
     function testRemoveNonExistentCosigner() public {
-        // Arrange
         vm.startPrank(admin);
         assertFalse(
             luckyBuy.isCosigner(cosigner1),
             "Cosigner should not be active initially"
         );
 
-        // Act
+        vm.expectRevert(LuckyBuy.InvalidCosigner.selector);
         luckyBuy.removeCosigner(cosigner1);
 
-        // Assert - State should remain inactive
-        assertFalse(
-            luckyBuy.isCosigner(cosigner1),
-            "Cosigner should remain inactive"
-        );
         vm.stopPrank();
     }
 
     function testRemoveCosignerTwice() public {
-        // Arrange
         vm.startPrank(admin);
         luckyBuy.addCosigner(cosigner1);
         luckyBuy.removeCosigner(cosigner1);
@@ -201,36 +194,27 @@ contract TestLuckyBuyCosigners is Test {
             "Cosigner should be inactive after first removal"
         );
 
-        // Act
+        vm.expectRevert(LuckyBuy.InvalidCosigner.selector);
         luckyBuy.removeCosigner(cosigner1);
 
-        // Assert - Should still be inactive
-        assertFalse(
-            luckyBuy.isCosigner(cosigner1),
-            "Cosigner should remain inactive after second removal"
-        );
         vm.stopPrank();
     }
 
     function testAddRemoveAddCosigner() public {
-        // Arrange
         vm.startPrank(admin);
 
-        // Act - Add cosigner
         luckyBuy.addCosigner(cosigner1);
         assertTrue(
             luckyBuy.isCosigner(cosigner1),
             "Cosigner should be active after addition"
         );
 
-        // Act - Remove cosigner
         luckyBuy.removeCosigner(cosigner1);
         assertFalse(
             luckyBuy.isCosigner(cosigner1),
             "Cosigner should be inactive after removal"
         );
 
-        // Act - Add cosigner again
         luckyBuy.addCosigner(cosigner1);
         assertTrue(
             luckyBuy.isCosigner(cosigner1),
@@ -240,13 +224,11 @@ contract TestLuckyBuyCosigners is Test {
     }
 
     function testGrantRoleThenAddCosigner() public {
-        // Arrange - Create new user and grant admin role
         address newAdmin = address(0x5);
         vm.startPrank(admin);
         luckyBuy.grantRole(0x00, newAdmin); // DEFAULT_ADMIN_ROLE is 0x00
         vm.stopPrank();
 
-        // Act - New admin adds cosigner
         vm.startPrank(newAdmin);
         luckyBuy.addCosigner(cosigner1);
         vm.stopPrank();
@@ -259,14 +241,12 @@ contract TestLuckyBuyCosigners is Test {
     }
 
     function testRevokeRoleThenFailAddCosigner() public {
-        // Arrange - Create new user, grant and then revoke admin role
         address tempAdmin = address(0x6);
         vm.startPrank(admin);
         luckyBuy.grantRole(0x00, tempAdmin); // Grant DEFAULT_ADMIN_ROLE
         luckyBuy.revokeRole(0x00, tempAdmin); // Revoke DEFAULT_ADMIN_ROLE
         vm.stopPrank();
 
-        // Act & Assert - Should revert due to missing admin role
         vm.startPrank(tempAdmin);
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -278,7 +258,6 @@ contract TestLuckyBuyCosigners is Test {
         luckyBuy.addCosigner(cosigner1);
         vm.stopPrank();
 
-        // Assert
         assertFalse(
             luckyBuy.isCosigner(cosigner1),
             "Cosigner should not be active"

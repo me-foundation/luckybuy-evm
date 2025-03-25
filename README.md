@@ -17,161 +17,76 @@ The protocol works in three steps:
 - Support for any NFT marketplace that accepts Off Chain Orders
 - Fallback ETH transfer if NFT purchase fails
 - Multi-cosigner support for redundancy
+- Commit expiration system
+- Configurable protocol fees and minimum rewards
+- Access control system
 
 ## Architecture
 
-The system consists of three main components:
+The system consists of the following components:
+
+### Core Contracts
 
 - **LuckyBuy.sol**: Core contract handling commits, verification, and fulfillment
-- **PRNG.sol**: Secure random number generation using CRC32 and signatures
+- **PRNG.sol**: Secure random number generation using commit/reveal, CRC32 and signatures
+
+### Common Components
+
 - **SignatureVerifier.sol**: EIP-712 compliant signature verification
+- **MEAccessControl.sol**: Role-based access control system
+- **CRC32.sol**: CRC32 implementation for random number generation
 
 ### Security Features
 
 - EIP-712 structured data signing
 - Unbiased random number generation
-- Access control for admin functions
+- Advanced role-based access control
 - Atomic execution of NFT purchases
 - Protected against signature malleability
+- Commit expiration mechanism
+- Configurable protocol parameters
 
-## Development
+#### Security Notes
 
-### Prerequisites
+The protocol has several critical security considerations that should be carefully reviewed:
 
-- [Foundry](https://book.getfoundry.sh/getting-started/installation)
-- Node.js and npm
-- Ethereum RPC URL (for forked tests)
+1. **Cosigner Security**
 
-### Setup
+   - The cosigner is tremendously important. If the cosigner is compromised, the protocol is compromised.
+   - We discussed ways to lock down the transaction in fulfillment, including whitelisting addresses, but ultimately decided against it.
+   - Regardless of whitelisting, a compromised cosigner can be used to grind different orders in different protocols (e.g., Seaport) and could still drain the contract through the commit/fulfill grinding process.
+   - The attacker could simply rotate addresses they control and treat that as a nonce in the commit/reveal process.
+   - We opted to leave it flexible so the order to/data/amount is arbitrary and relies on protecting our cosigner and enforcing tight key management/rotation procedures.
 
-1. Clone the repository:
+2. **Random Number Generation**
 
-```bash
-git clone https://github.com/your-org/luckybuy-evm.git
-cd luckybuy-evm
-```
+   - The PRNG implementation uses a combination of keccak256 and CRC32 to generate random numbers.
+   - The system implements modulo bias prevention by rejecting values above MAX_CRC32_HASH_VALUE.
+   - Cosigners must ensure their signature generation process is truly random and not predictable.
+   - The commit/reveal scheme adds an additional layer of randomness through user-provided seeds.
 
-2. Install dependencies:
+3. **Balance Management**
 
-```bash
-forge install
-npm install
-```
+   - The contract maintains separate balances for treasury, commits, and protocol fees.
+   - Each commit's fee is tracked individually to handle fee changes gracefully.
 
-3. Set up environment:
+4. **Expiration Mechanism**
 
-```bash
-cp .env.example .env
-# Add your RPC URL to .env
-```
+   - Commits have a configurable expiration time (default 1 day).
+   - The expiration mechanism prevents funds from being locked indefinitely.
 
-### Testing
+5. **Access Control**
 
-Run the test suite:
+   - The contract uses a role-based access control system for administrative functions.
+   - Critical functions are protected by appropriate access controls.
 
-```bash
-forge test
-```
+6. **Marketplace Interaction**
 
-For detailed gas reports:
+   - The contract can interact with any NFT marketplace that accepts off-chain orders.
+   - This flexibility comes with risks - careful validation of marketplace interactions on web2 in the magic eden back end is crucial.
+   - Failed NFT purchases must be handled gracefully to ensure user funds are returned.
 
-```bash
-forge test --gas-report
-```
+7. **Front-Running Protection**
+   - The commit/reveal scheme helps protect against front-running.
 
-For fork testing (requires RPC URL):
-
-```bash
-forge test --fork-url $MAINNET_RPC_URL
-```
-
-### Deployment
-
-1. Set required environment variables:
-
-```bash
-export PRIVATE_KEY=your_private_key
-export RPC_URL=your_rpc_url
-```
-
-2. Deploy:
-
-```bash
-forge script script/Deploy.s.sol --rpc-url $RPC_URL --broadcast
-```
-
-## Usage
-
-### Making a Commit
-
-1. Calculate the order hash for the NFT purchase:
-
-```solidity
-bytes32 orderHash = luckyBuy.hashOrder(
-    target,
-    reward,
-    data,
-    tokenAddress,
-    tokenId
-);
-```
-
-2. Submit a commit:
-
-```solidity
-luckyBuy.commit{value: amount}(
-    receiver,
-    cosigner,
-    seed,
-    orderHash,
-    reward
-);
-```
-
-### Fulfilling Orders
-
-Cosigners monitor commit events and fulfill valid commits:
-
-```solidity
-luckyBuy.fulfill(
-    commitId,
-    orderTo,
-    orderData,
-    orderAmount,
-    token,
-    tokenId,
-    signature
-);
-```
-
-## Administration
-
-### Managing Cosigners
-
-Add a cosigner:
-
-```solidity
-luckyBuy.addCosigner(cosignerAddress);
-```
-
-Remove a cosigner:
-
-```solidity
-luckyBuy.removeCosigner(cosignerAddress);
-```
-
-### Treasury Management
-
-Set maximum reward:
-
-```solidity
-luckyBuy.setMaxReward(newMaxReward);
-```
-
-## License
-
-This project is licensed under the Unlicense - see the [LICENSE](LICENSE) file for details.
-
-## Improvements
-
-The fulfillment could whitelist the marketplace addresses that are allowed to be used. This would greatly reduce the risk of accidental misuse and restrict arbitrary contract calls.
+These security considerations should be carefully reviewed during the security audit, with particular attention to the cosigner system and random number generation implementation.

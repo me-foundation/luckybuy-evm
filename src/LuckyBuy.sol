@@ -441,17 +441,6 @@ contract LuckyBuy is
         emit CommitExpired(commitId_, hash(commitData));
     }
 
-    /// @notice Calculates contribution amount after removing fee
-    /// @param amount The original amount including fee
-    /// @return The contribution amount without the fee
-    /// @dev Uses formula: contribution = (amount * FEE_DENOMINATOR) / (FEE_DENOMINATOR + feePercent)
-    /// @dev This ensures fee isn't charged on the fee portion itself
-    function calculateContributionWithoutFee(
-        uint256 amount
-    ) public view returns (uint256) {
-        return (amount * BASE_POINTS) / (BASE_POINTS + protocolFee);
-    }
-
     /// @notice Calculates fee amount based on input amount and fee percentage
     /// @param _amount The amount to calculate fee on
     /// @return The calculated fee amount
@@ -488,6 +477,7 @@ contract LuckyBuy is
     function removeCosigner(
         address cosigner_
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (!isCosigner[cosigner_]) revert InvalidCosigner();
         isCosigner[cosigner_] = false;
         emit CosignerRemoved(cosigner_);
     }
@@ -510,6 +500,8 @@ contract LuckyBuy is
     /// @param maxReward_ New maximum reward value
     /// @dev Only callable by admin role
     function setMaxReward(uint256 maxReward_) external onlyRole(OPS_ROLE) {
+        if (maxReward_ < minReward) revert InvalidReward();
+
         uint256 oldMaxReward = maxReward;
         maxReward = maxReward_;
         emit MaxRewardUpdated(oldMaxReward, maxReward_);
