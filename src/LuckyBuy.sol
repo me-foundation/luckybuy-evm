@@ -274,6 +274,15 @@ contract LuckyBuy is
                 digest
             );
         } else {
+            if (openEditionToken != address(0)) {
+                IERC1155(openEditionToken).safeTransferFrom(
+                    address(this),
+                    commitData.receiver,
+                    openEditionTokenId,
+                    openEditionTokenAmount,
+                    ""
+                );
+            }
             // emit the failure
             emit Fulfillment(
                 msg.sender,
