@@ -1091,5 +1091,31 @@ contract TestLuckyBuyCommit is Test {
         );
     }
 
+    function testOpenEditionTokenSet() public {
+        vm.startPrank(admin);
+        luckyBuy.setOpenEditionToken(address(0), 0, 0);
+        vm.stopPrank();
+
+        vm.expectRevert();
+        luckyBuy.setOpenEditionToken(address(1), 1, 1);
+
+        //add this contract as ops
+        vm.startPrank(admin);
+        luckyBuy.addOpsUser(address(this));
+        vm.stopPrank();
+
+        assertEq(luckyBuy.openEditionToken(), address(0));
+        assertEq(luckyBuy.openEditionTokenId(), 0);
+        assertEq(luckyBuy.openEditionTokenAmount(), 0);
+
+        vm.expectRevert(LuckyBuy.InvalidAmount.selector);
+        luckyBuy.setOpenEditionToken(address(1), 1, 0);
+
+        luckyBuy.setOpenEditionToken(address(1), 1, 1);
+        assertEq(luckyBuy.openEditionToken(), address(1));
+        assertEq(luckyBuy.openEditionTokenId(), 1);
+        assertEq(luckyBuy.openEditionTokenAmount(), 1);
+    }
+
     receive() external payable {}
 }

@@ -82,6 +82,11 @@ contract LuckyBuy is
         uint256 newCommitExpireTime
     );
     event CommitExpired(uint256 indexed commitId, bytes32 digest);
+    event OpenEditionTokenSet(
+        address indexed token,
+        uint256 indexed tokenId,
+        uint256 amount
+    );
 
     error AlreadyCosigner();
     error AlreadyFulfilled();
@@ -473,6 +478,31 @@ contract LuckyBuy is
     // ############################################################
     // ############ GETTERS & SETTERS ############
     // ############################################################
+
+    /// @notice Sets the open edition token. We allow address(0) here.
+    /// @param token_ Address of the open edition token
+    /// @param tokenId_ ID of the open edition token
+    /// @param amount_ Amount of the open edition token
+    /// @dev Only callable by ops role
+    function setOpenEditionToken(
+        address token_,
+        uint256 tokenId_,
+        uint256 amount_
+    ) external onlyRole(OPS_ROLE) {
+        if (address(token_) == address(0)) {
+            openEditionToken = address(0);
+            openEditionTokenId = 0;
+            openEditionTokenAmount = 0;
+            emit OpenEditionTokenSet(token_, 0, 0);
+        } else {
+            if (amount_ == 0) revert InvalidAmount();
+
+            openEditionToken = token_;
+            openEditionTokenId = tokenId_;
+            openEditionTokenAmount = amount_;
+            emit OpenEditionTokenSet(token_, tokenId_, amount_);
+        }
+    }
 
     /// @notice Adds a new authorized cosigner
     /// @param cosigner_ Address to add as cosigner
