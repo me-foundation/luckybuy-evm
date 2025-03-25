@@ -22,7 +22,7 @@ contract MockERC1155 is ERC1155 {
     }
 }
 
-contract TestLuckyBuyCommit is Test {
+contract TestLuckyBuyOpenEdition is Test {
     MockLuckyBuy luckyBuy;
     MockERC1155 openEditionToken;
     address admin = address(0x1);
@@ -162,5 +162,76 @@ contract TestLuckyBuyCommit is Test {
         vm.stopPrank();
 
         assertEq(openEditionToken.balanceOf(address(user), 1), 1);
+    }
+    function testOpenEditionTransferFail() public {
+        // out of base points
+
+        vm.prank(admin);
+        luckyBuy.setOpenEditionToken(address(1), 1, 1);
+
+        uint256 commitAmount = 0.001 ether;
+        uint256 rewardAmount = 1 ether;
+        // Create order hash for a simple ETH transfer - this stays the same for all plays
+        bytes32 orderHash = luckyBuy.hashOrder(
+            address(0), // to address(0)
+            rewardAmount, // amount 1 ether (reward amount)
+            "", // no data
+            address(0), // no token
+            0 // no token id
+        );
+
+        vm.startPrank(user);
+
+        // Create commit
+        uint256 commitId = luckyBuy.commit{value: commitAmount}(
+            user, // receiver
+            cosigner, // cosigner
+            seed, // random seed
+            orderHash, // order hash we just created
+            rewardAmount // reward amount (10x the commit for 10% odds)
+        );
+        vm.stopPrank();
+
+        (
+            uint256 _id,
+            address _receiver,
+            address _cosigner,
+            uint256 _seed,
+            uint256 _counter,
+            bytes32 _orderHash,
+            uint256 _amount,
+            uint256 _reward
+        ) = luckyBuy.luckyBuys(commitId);
+
+        // Get the counter for this commit
+        uint256 counter = 0;
+
+        // Sign the commit
+        bytes memory signature = signCommit(
+            commitId,
+            user,
+            seed,
+            counter,
+            orderHash,
+            commitAmount,
+            rewardAmount
+        );
+
+        // Fulfill the commit
+        vm.startPrank(user);
+        // This revert happens because there is no code at the address. The error will be different in different cases. E.g. bad address vs no balance
+        vm.expectRevert();
+        luckyBuy.fulfill(
+            commitId,
+            address(0), // marketplace
+            "", // orderData
+            rewardAmount, // orderAmount
+            address(0), // token
+            0, // tokenId
+            signature
+        );
+        vm.stopPrank();
+
+        assertEq(openEditionToken.balanceOf(address(user), 1), 0);
     }
 }
