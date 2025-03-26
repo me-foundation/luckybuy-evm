@@ -23,6 +23,8 @@ The protocol works in three steps:
 
 ## Architecture
 
+![swimlane](./docs/swimlane.png)
+
 The system consists of the following components:
 
 ### Core Contracts
