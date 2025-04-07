@@ -65,3 +65,60 @@ contract SetOpenEditionToken is Script {
         vm.stopBroadcast();
     }
 }
+
+contract AddCosigner is Script {
+    address payable luckyBuy =
+        payable(0x088276f447Bd80882330E225a255930c201836C4);
+    address cosigner = 0x993f64E049F95d246dc7B0D196CB5dC419d4e1f1;
+
+    function run() external {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+
+        vm.startBroadcast(deployerPrivateKey);
+
+        LuckyBuy(luckyBuy).addCosigner(cosigner);
+
+        vm.stopBroadcast();
+    }
+}
+
+contract getLuckyBuy is Script {
+    address payable luckyBuy =
+        payable(0x088276f447Bd80882330E225a255930c201836C4);
+
+    function run() external {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+
+        vm.startBroadcast(deployerPrivateKey);
+
+        (
+            uint256 id,
+            address receiver,
+            address cosigner,
+            uint256 seed,
+            uint256 counter,
+            bytes32 orderHash,
+            uint256 amount,
+            uint256 reward
+        ) = LuckyBuy(luckyBuy).luckyBuys(0);
+        console.log(id);
+        console.log(receiver);
+        console.log(cosigner);
+        console.log(seed);
+        console.log(counter);
+        console.logBytes32(orderHash);
+        console.log(amount);
+        console.log(reward);
+
+        console.log(LuckyBuy(luckyBuy).feesPaid(0));
+        console.log(LuckyBuy(luckyBuy).protocolFee());
+
+        console.log("########################");
+        console.log(LuckyBuy(luckyBuy).treasuryBalance());
+        console.log(LuckyBuy(luckyBuy).commitBalance());
+
+        console.log(LuckyBuy(luckyBuy).protocolBalance());
+
+        vm.stopBroadcast();
+    }
+}
