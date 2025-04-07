@@ -35,7 +35,7 @@ contract DeployLuckyBuy is Script {
 }
 
 contract DeployOpenEdition is Script {
-    address luckyBuy = 0x088276f447Bd80882330E225a255930c201836C4;
+    address luckyBuy = 0x85d31445AF0b0fF26851bf3C5e27e90058Df3270;
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
@@ -50,9 +50,24 @@ contract DeployOpenEdition is Script {
     }
 }
 
+contract MintOpenEdition is Script {
+    address luckyBuy = 0x85d31445AF0b0fF26851bf3C5e27e90058Df3270;
+    address openEditionToken = 0x62A3A7ebc812810f868ef52be81935147Ed9456c;
+
+    function run() external {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+
+        vm.startBroadcast(deployerPrivateKey);
+
+        OpenEdition(openEditionToken).mint(luckyBuy, 1, 1000 ether, "");
+
+        vm.stopBroadcast();
+    }
+}
+
 contract SetOpenEditionToken is Script {
     address payable luckyBuy =
-        payable(0x088276f447Bd80882330E225a255930c201836C4);
+        payable(0x85d31445AF0b0fF26851bf3C5e27e90058Df3270);
     address openEditionToken = 0x62A3A7ebc812810f868ef52be81935147Ed9456c;
 
     function run() external {
@@ -68,7 +83,7 @@ contract SetOpenEditionToken is Script {
 
 contract AddCosigner is Script {
     address payable luckyBuy =
-        payable(0x088276f447Bd80882330E225a255930c201836C4);
+        payable(0x85d31445AF0b0fF26851bf3C5e27e90058Df3270);
     address cosigner = 0x993f64E049F95d246dc7B0D196CB5dC419d4e1f1;
 
     function run() external {
@@ -84,7 +99,7 @@ contract AddCosigner is Script {
 
 contract getLuckyBuy is Script {
     address payable luckyBuy =
-        payable(0x088276f447Bd80882330E225a255930c201836C4);
+        payable(0x85d31445AF0b0fF26851bf3C5e27e90058Df3270);
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
