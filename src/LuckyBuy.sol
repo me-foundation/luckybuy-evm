@@ -365,8 +365,6 @@ contract LuckyBuy is
         } else {
             // Order failed, transfer the eth commit + fees back to the receiver
             uint256 protocolFeesPaid = feesPaid[commitData.id];
-            // Headcheck: Because fees are tracked separately, this should never happen
-            // if (protocolFeesPaid > treasuryBalance) revert InsufficientBalance();
 
             uint256 transferAmount = commitData.amount + protocolFeesPaid;
 
