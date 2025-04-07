@@ -628,11 +628,11 @@ contract LuckyBuy is
     }
 
     function setProtocolFee(uint256 protocolFee_) external onlyRole(OPS_ROLE) {
-        if (protocolFee_ > BASE_POINTS) revert InvalidProtocolFee();
         _setProtocolFee(protocolFee_);
     }
 
     function _setProtocolFee(uint256 protocolFee_) internal {
+        if (protocolFee_ > BASE_POINTS) revert InvalidProtocolFee();
         uint256 oldProtocolFee = protocolFee;
         protocolFee = protocolFee_;
         emit ProtocolFeeUpdated(oldProtocolFee, protocolFee_);
