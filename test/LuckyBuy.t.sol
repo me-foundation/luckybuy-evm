@@ -5,7 +5,10 @@ import "forge-std/Test.sol";
 import "src/LuckyBuy.sol";
 
 contract MockLuckyBuy is LuckyBuy {
-    constructor(uint256 protocolFee_) LuckyBuy(protocolFee_) {}
+    constructor(
+        uint256 protocolFee_,
+        uint256 flatFee_
+    ) LuckyBuy(protocolFee_, flatFee_) {}
 
     function setIsFulfilled(uint256 commitId_, bool isFulfilled_) public {
         isFulfilled[commitId_] = isFulfilled_;
@@ -19,6 +22,7 @@ contract TestLuckyBuyCommit is Test {
     address receiver = address(0x3);
     address cosigner = address(0x4);
     uint256 protocolFee = 0;
+    uint256 flatFee = 0;
 
     uint256 seed = 12345;
     bytes32 orderHash = hex"1234";
@@ -51,7 +55,7 @@ contract TestLuckyBuyCommit is Test {
 
     function setUp() public {
         vm.startPrank(admin);
-        luckyBuy = new MockLuckyBuy(protocolFee);
+        luckyBuy = new MockLuckyBuy(protocolFee, flatFee);
         vm.deal(admin, 100 ether);
         vm.deal(receiver, 100 ether);
         vm.deal(address(this), 100 ether);
@@ -185,7 +189,8 @@ contract TestLuckyBuyCommit is Test {
         assertEq(storedAmount, amount, "Amount should match");
         assertEq(storedReward, reward, "Reward should match");
 
-        assertEq(luckyBuy.protocolBalance(), flatFeeAmount);
+        // Flat Fee goes straight to treasury, lb has not been funded yet
+        assertEq(luckyBuy.treasuryBalance(), flatFeeAmount);
         vm.stopPrank();
     }
 
@@ -601,7 +606,7 @@ contract TestLuckyBuyCommit is Test {
 
         // Deploy LuckyBuy from admin account
         vm.prank(admin);
-        LuckyBuy newLuckyBuy = new LuckyBuy(protocolFee);
+        LuckyBuy newLuckyBuy = new LuckyBuy(protocolFee, flatFee);
 
         // Verify the deployment address matches prediction
         assertEq(

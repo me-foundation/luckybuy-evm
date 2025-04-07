@@ -120,7 +120,8 @@ contract LuckyBuy is
     /// @notice Constructor initializes the contract and handles any pre-existing balance
     /// @dev Sets up EIP712 domain separator and deposits any ETH sent during deployment
     constructor(
-        uint256 protocolFee_
+        uint256 protocolFee_,
+        uint256 flatFee_
     ) MEAccessControl() SignatureVerifier("LuckyBuy", "1") {
         uint256 existingBalance = address(this).balance;
         if (existingBalance > 0) {
@@ -128,6 +129,7 @@ contract LuckyBuy is
         }
 
         _setProtocolFee(protocolFee_);
+        _setFlatFee(flatFee_);
     }
 
     /// @notice Allows a user to commit funds for a chance to win
@@ -156,7 +158,7 @@ contract LuckyBuy is
         uint256 amountWithoutFlatFee = msg.value - flatFee;
 
         // We collect the flat fee regardless of the amount. It is not returned to the user, ever.
-        protocolBalance += flatFee;
+        treasuryBalance += flatFee;
 
         // This is the amount the user wants to commit
         uint256 commitAmount = calculateContributionWithoutFee(

@@ -12,6 +12,7 @@ contract TestLuckyBuyCosigners is Test {
     address cosigner1 = address(0x3);
     address cosigner2 = address(0x4);
     uint256 protocolFee = 0;
+    uint256 flatFee = 0;
 
     // Events for testing
     event CosignerAdded(address indexed cosigner);
@@ -19,7 +20,7 @@ contract TestLuckyBuyCosigners is Test {
 
     function setUp() public {
         vm.startPrank(admin);
-        luckyBuy = new LuckyBuy(protocolFee);
+        luckyBuy = new LuckyBuy(protocolFee, flatFee);
         vm.stopPrank();
     }
 
