@@ -1015,6 +1015,44 @@ contract TestLuckyBuyCommit is Test {
         luckyBuy.expire(0);
     }
 
+    function testExpireCommitCosigner() public {
+        vm.startPrank(admin);
+        luckyBuy.setCommitExpireTime(1 days);
+
+        vm.expectRevert(LuckyBuy.InvalidCommitExpireTime.selector);
+        luckyBuy.setCommitExpireTime(0);
+
+        vm.stopPrank();
+
+        uint256 initialTreasuryBalance = luckyBuy.treasuryBalance();
+        uint256 initialCommitBalance = luckyBuy.commitBalance();
+        uint256 initialProtocolBalance = luckyBuy.protocolBalance();
+
+        vm.deal(address(this), amount);
+
+        uint256 initialBalance = address(this).balance;
+
+        luckyBuy.commit{value: amount}(
+            address(this),
+            cosigner,
+            seed,
+            orderHash,
+            reward
+        );
+
+        assertEq(address(this).balance, initialBalance - amount);
+
+        vm.warp(block.timestamp + 2 days);
+
+        vm.prank(cosigner);
+        luckyBuy.expire(0);
+
+        assertEq(cosigner.balance, initialBalance);
+        assertEq(luckyBuy.treasuryBalance(), initialTreasuryBalance);
+        assertEq(luckyBuy.commitBalance(), initialCommitBalance);
+        assertEq(luckyBuy.protocolBalance(), initialProtocolBalance);
+    }
+
     function testExpireCommitNotOwner() public {
         vm.startPrank(admin);
         luckyBuy.setCommitExpireTime(1 days);

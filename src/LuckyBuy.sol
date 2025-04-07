@@ -106,9 +106,11 @@ contract LuckyBuy is
     error CommitNotExpired();
     error TransferFailed();
 
-    modifier onlyCommitOwner(uint256 commitId_) {
-        if (luckyBuys[commitId_].receiver != msg.sender)
-            revert InvalidCommitOwner();
+    modifier onlyCommitOwnerOrCosigner(uint256 commitId_) {
+        if (
+            luckyBuys[commitId_].receiver != msg.sender &&
+            luckyBuys[commitId_].cosigner != msg.sender
+        ) revert InvalidCommitOwner();
         _;
     }
 
@@ -436,7 +438,7 @@ contract LuckyBuy is
     /// @dev Emits a CommitExpired event
     function expire(
         uint256 commitId_
-    ) external onlyCommitOwner(commitId_) nonReentrant {
+    ) external onlyCommitOwnerOrCosigner(commitId_) nonReentrant {
         if (commitId_ >= luckyBuys.length) revert InvalidCommitId();
         if (isFulfilled[commitId_]) revert AlreadyFulfilled();
         if (isExpired[commitId_]) revert CommitIsExpired();
