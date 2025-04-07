@@ -625,7 +625,7 @@ contract LuckyBuy is
         uint256 amount,
         uint256 reward
     ) internal pure returns (uint256) {
-        return (amount * 10000) / reward;
+        return (amount * BASE_POINTS) / reward;
     }
 
     /// @notice Fulfills an order with the specified parameters
