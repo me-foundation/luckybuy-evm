@@ -31,6 +31,7 @@ contract LuckyBuy is
     uint256 public maxReward = 50 ether;
     uint256 public protocolFee = 0;
     uint256 public minReward = BASE_POINTS;
+    uint256 public flatFee = 0;
 
     uint256 public commitExpireTime = 1 days;
     mapping(uint256 commitId => uint256 expiresAt) public commitExpiresAt;
@@ -87,7 +88,7 @@ contract LuckyBuy is
         uint256 indexed tokenId,
         uint256 amount
     );
-
+    event FlatFeeUpdated(uint256 oldFlatFee, uint256 newFlatFee);
     error AlreadyCosigner();
     error AlreadyFulfilled();
     error InsufficientBalance();
@@ -148,14 +149,21 @@ contract LuckyBuy is
         if (reward_ < minReward) revert InvalidReward();
         if (reward_ == 0) revert InvalidReward();
 
-        uint256 amountWithoutFee = calculateContributionWithoutFee(msg.value);
+        uint256 amountWithoutFlatFee = msg.value - flatFee;
 
-        uint256 fee = msg.value - amountWithoutFee;
+        // We collect the flat fee regardless of the amount.
+        protocolBalance += flatFee;
 
-        if (amountWithoutFee > reward_) revert InvalidAmount();
+        uint256 amountWithoutProtocolFee = calculateContributionWithoutFee(
+            amountWithoutFlatFee
+        );
+
+        uint256 fee = amountWithoutFlatFee - amountWithoutProtocolFee;
+
+        if (amountWithoutProtocolFee > reward_) revert InvalidAmount();
 
         // Check if odds are greater than 100%
-        if ((amountWithoutFee * BASE_POINTS) / reward_ > BASE_POINTS)
+        if ((amountWithoutProtocolFee * BASE_POINTS) / reward_ > BASE_POINTS)
             revert InvalidAmount();
 
         uint256 commitId = luckyBuys.length;
@@ -163,7 +171,7 @@ contract LuckyBuy is
 
         feesPaid[commitId] = fee;
         protocolBalance += fee;
-        commitBalance += amountWithoutFee;
+        commitBalance += amountWithoutProtocolFee;
 
         CommitData memory commitData = CommitData({
             id: commitId,
@@ -172,7 +180,7 @@ contract LuckyBuy is
             seed: seed_,
             counter: userCounter,
             orderHash: orderHash_,
-            amount: amountWithoutFee,
+            amount: amountWithoutProtocolFee,
             reward: reward_
         });
 
@@ -190,7 +198,7 @@ contract LuckyBuy is
             seed_,
             userCounter,
             orderHash_, // Relay tx properties: to, data, value
-            amountWithoutFee,
+            amountWithoutProtocolFee,
             reward_,
             fee,
             digest
@@ -648,5 +656,19 @@ contract LuckyBuy is
         uint256 oldProtocolFee = protocolFee;
         protocolFee = protocolFee_;
         emit ProtocolFeeUpdated(oldProtocolFee, protocolFee_);
+    }
+
+    /// @notice Sets the flat fee. Is a static amount that comes off the top of the commit amount.
+    /// @param flatFee_ New flat fee
+    /// @dev Only callable by ops role
+    /// @dev Emits a FlatFeeUpdated event
+    function setFlatFee(uint256 flatFee_) external onlyRole(OPS_ROLE) {
+        _setFlatFee(flatFee_);
+    }
+
+    function _setFlatFee(uint256 flatFee_) internal {
+        uint256 oldFlatFee = flatFee;
+        flatFee = flatFee_;
+        emit FlatFeeUpdated(oldFlatFee, flatFee_);
     }
 }

@@ -115,6 +115,77 @@ contract TestLuckyBuyCommit is Test {
         vm.stopPrank();
     }
 
+    function testCommitSuccessWithFlatFee() public {
+        uint256 flatFeeAmount = 0.01 ether;
+        vm.startPrank(admin);
+        luckyBuy.setFlatFee(flatFeeAmount);
+        vm.stopPrank();
+
+        assertEq(luckyBuy.flatFee(), flatFeeAmount);
+
+        assertEq(luckyBuy.protocolBalance(), 0);
+
+        console.log("protocolFee", luckyBuy.protocolFee());
+
+        vm.deal(address(luckyBuy), 100 ether);
+
+        vm.startPrank(user);
+        vm.deal(user, amount + flatFeeAmount);
+
+        // Note: We can't easily check the hash in the event since it's calculated inside the contract
+        vm.expectEmit(true, true, true, false); // We don't check the non-indexed parameters
+        emit Commit(
+            user,
+            0, // First commit ID should be 0
+            receiver,
+            cosigner,
+            seed,
+            0, // First counter for this receiver should be 0
+            orderHash,
+            amount,
+            reward,
+            0,
+            bytes32(0)
+        );
+
+        luckyBuy.commit{value: amount + flatFeeAmount}(
+            receiver,
+            cosigner,
+            seed,
+            orderHash,
+            reward
+        );
+
+        assertEq(
+            luckyBuy.luckyBuyCount(receiver),
+            1,
+            "Receiver counter should be incremented"
+        );
+
+        (
+            uint256 id,
+            address storedReceiver,
+            address storedCosigner,
+            uint256 storedSeed,
+            uint256 storedCounter,
+            bytes32 storedOrderHash,
+            uint256 storedAmount,
+            uint256 storedReward
+        ) = luckyBuy.luckyBuys(0);
+
+        assertEq(id, 0, "Commit ID should be 0");
+        assertEq(storedReceiver, receiver, "Receiver should match");
+        assertEq(storedCosigner, cosigner, "Cosigner should match");
+        assertEq(storedSeed, seed, "Seed should match");
+        assertEq(storedCounter, 0, "Counter should be 0");
+        assertEq(storedOrderHash, orderHash, "Order hash should match");
+        assertEq(storedAmount, amount, "Amount should match");
+        assertEq(storedReward, reward, "Reward should match");
+
+        assertEq(luckyBuy.protocolBalance(), flatFeeAmount);
+        vm.stopPrank();
+    }
+
     function testCommitMultipleTimes() public {
         vm.startPrank(user);
         vm.deal(user, amount * 2);
