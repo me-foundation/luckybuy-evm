@@ -735,16 +735,30 @@ contract TestLuckyBuyCommit is Test {
         assertEq(fee, (amount * protocolFee) / luckyBuy.BASE_POINTS());
     }
 
+    // The contract will use a reverse fee calculation based on msg.value because msg.value = commit amount + fee.
+    // However, that math should be the same as knowing the commit amount and calculating the fee from it.
     function testCommitWithFee() public {
         uint256 amount = 1 ether;
         uint256 protocolFee = 100;
+        // reward is 10 eth;
 
         vm.startPrank(admin);
         luckyBuy.setProtocolFee(protocolFee);
         vm.stopPrank();
 
-        uint256 fee = luckyBuy.calculateFee(reward);
+        assertNotEq(amount, reward);
+
+        uint256 fee = luckyBuy.calculateFee(amount);
+        uint256 rewardFee = luckyBuy.calculateFee(reward);
+
+        assertNotEq(fee, rewardFee);
+
         uint256 amountWithFee = amount + fee;
+
+        uint256 amountWithoutFeeCheck = luckyBuy
+            .calculateContributionWithoutFee(amountWithFee);
+
+        assertEq(amountWithoutFeeCheck, amount);
 
         vm.startPrank(user);
         vm.deal(user, amountWithFee);
@@ -767,8 +781,17 @@ contract TestLuckyBuyCommit is Test {
             uint256 amountWithoutFee,
             uint256 reward
         ) = luckyBuy.luckyBuys(0);
+
         assertEq(amountWithoutFee, amount);
         assertEq(amountWithFee, address(luckyBuy).balance);
+
+        assertEq(
+            luckyBuy.calculateFee(amount),
+            amountWithFee - amount,
+            "Fee should be the same"
+        );
+
+        assertEq(luckyBuy.protocolBalance(), fee);
     }
 
     function testWithdrawSuccess() public {

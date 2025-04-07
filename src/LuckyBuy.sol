@@ -148,8 +148,9 @@ contract LuckyBuy is
         if (reward_ < minReward) revert InvalidReward();
         if (reward_ == 0) revert InvalidReward();
 
-        uint256 fee = _calculateFee(reward_);
-        uint256 amountWithoutFee = msg.value - fee;
+        uint256 amountWithoutFee = calculateContributionWithoutFee(msg.value);
+
+        uint256 fee = msg.value - amountWithoutFee;
 
         if (amountWithoutFee > reward_) revert InvalidAmount();
 
@@ -471,6 +472,17 @@ contract LuckyBuy is
 
     function _calculateFee(uint256 _amount) internal view returns (uint256) {
         return (_amount * protocolFee) / BASE_POINTS;
+    }
+
+    /// @notice Calculates contribution amount after removing fee
+    /// @param amount The original amount including fee
+    /// @return The contribution amount without the fee
+    /// @dev Uses formula: contribution = (amount * FEE_DENOMINATOR) / (FEE_DENOMINATOR + feePercent)
+    /// @dev This ensures fee isn't charged on the fee portion itself
+    function calculateContributionWithoutFee(
+        uint256 amount
+    ) public view returns (uint256) {
+        return (amount * BASE_POINTS) / (BASE_POINTS + protocolFee);
     }
 
     function onERC1155Received(
