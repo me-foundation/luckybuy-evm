@@ -154,29 +154,33 @@ contract LuckyBuy is
 
         uint256 amountWithoutFlatFee = msg.value - flatFee;
 
-        // We collect the flat fee regardless of the amount.
+        // We collect the flat fee regardless of the amount. It is not returned to the user, ever.
         protocolBalance += flatFee;
-        if (amountWithoutFlatFee < (reward_ / ONE_PERCENT))
-            revert InvalidAmount();
 
-        uint256 amountWithoutProtocolFee = calculateContributionWithoutFee(
+        // This is the amount the user wants to commit
+        uint256 commitAmount = calculateContributionWithoutFee(
             amountWithoutFlatFee
         );
 
-        uint256 fee = amountWithoutFlatFee - amountWithoutProtocolFee;
+        // The commit amount must be greater than one percent of the reward
+        if (commitAmount < (reward_ / ONE_PERCENT)) revert InvalidAmount();
 
-        if (amountWithoutProtocolFee > reward_) revert InvalidAmount();
+        // The fee is the amount without the flat fee minus the amount without the protocol fee
+        uint256 protocolFee = amountWithoutFlatFee - commitAmount;
+
+        // The commit amount must be less than the reward
+        if (commitAmount > reward_) revert InvalidAmount();
 
         // Check if odds are greater than 100%
-        if ((amountWithoutProtocolFee * BASE_POINTS) / reward_ > BASE_POINTS)
+        if ((commitAmount * BASE_POINTS) / reward_ > BASE_POINTS)
             revert InvalidAmount();
 
         uint256 commitId = luckyBuys.length;
         uint256 userCounter = luckyBuyCount[receiver_]++;
 
-        feesPaid[commitId] = fee;
-        protocolBalance += fee;
-        commitBalance += amountWithoutProtocolFee;
+        feesPaid[commitId] = protocolFee;
+        protocolBalance += protocolFee;
+        commitBalance += commitAmount;
 
         CommitData memory commitData = CommitData({
             id: commitId,
@@ -185,7 +189,7 @@ contract LuckyBuy is
             seed: seed_,
             counter: userCounter,
             orderHash: orderHash_,
-            amount: amountWithoutProtocolFee,
+            amount: commitAmount,
             reward: reward_
         });
 
@@ -203,9 +207,9 @@ contract LuckyBuy is
             seed_,
             userCounter,
             orderHash_, // Relay tx properties: to, data, value
-            amountWithoutProtocolFee,
+            commitAmount,
             reward_,
-            fee,
+            protocolFee,
             digest
         );
 
