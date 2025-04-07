@@ -36,6 +36,7 @@ contract LuckyBuy is
     mapping(uint256 commitId => uint256 expiresAt) public commitExpiresAt;
 
     uint256 public constant MIN_COMMIT_EXPIRE_TIME = 1 minutes;
+    uint256 public constant ONE_PERCENT = 100;
 
     mapping(address cosigner => bool active) public isCosigner;
     mapping(address receiver => uint256 counter) public luckyBuyCount;
@@ -149,6 +150,8 @@ contract LuckyBuy is
         if (reward_ == 0) revert InvalidReward();
 
         uint256 amountWithoutFee = calculateContributionWithoutFee(msg.value);
+
+        if (amountWithoutFee < (reward_ / ONE_PERCENT)) revert InvalidAmount();
 
         uint256 fee = msg.value - amountWithoutFee;
 

@@ -100,7 +100,7 @@ contract TestLuckyBuyOpenEdition is Test {
 
         vm.prank(admin);
 
-        uint256 commitAmount = 0.001 ether;
+        uint256 commitAmount = 0.01 ether;
         uint256 rewardAmount = 1 ether;
         // Create order hash for a simple ETH transfer - this stays the same for all plays
         bytes32 orderHash = luckyBuy.hashOrder(
@@ -169,7 +169,7 @@ contract TestLuckyBuyOpenEdition is Test {
         vm.prank(admin);
         luckyBuy.setOpenEditionToken(address(1), 1, 1);
 
-        uint256 commitAmount = 0.001 ether;
+        uint256 commitAmount = 0.01 ether;
         uint256 rewardAmount = 1 ether;
         // Create order hash for a simple ETH transfer - this stays the same for all plays
         bytes32 orderHash = luckyBuy.hashOrder(
