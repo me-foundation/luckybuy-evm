@@ -37,6 +37,7 @@ contract LuckyBuy is
     mapping(uint256 commitId => uint256 expiresAt) public commitExpiresAt;
 
     uint256 public constant MIN_COMMIT_EXPIRE_TIME = 1 minutes;
+    uint256 public constant ONE_PERCENT = 100;
 
     mapping(address cosigner => bool active) public isCosigner;
     mapping(address receiver => uint256 counter) public luckyBuyCount;
@@ -107,9 +108,11 @@ contract LuckyBuy is
     error CommitNotExpired();
     error TransferFailed();
 
-    modifier onlyCommitOwner(uint256 commitId_) {
-        if (luckyBuys[commitId_].receiver != msg.sender)
-            revert InvalidCommitOwner();
+    modifier onlyCommitOwnerOrCosigner(uint256 commitId_) {
+        if (
+            luckyBuys[commitId_].receiver != msg.sender &&
+            luckyBuys[commitId_].cosigner != msg.sender
+        ) revert InvalidCommitOwner();
         _;
     }
 
@@ -153,6 +156,8 @@ contract LuckyBuy is
 
         // We collect the flat fee regardless of the amount.
         protocolBalance += flatFee;
+        if (amountWithoutFlatFee < (reward_ / ONE_PERCENT))
+            revert InvalidAmount();
 
         uint256 amountWithoutProtocolFee = calculateContributionWithoutFee(
             amountWithoutFlatFee
@@ -374,8 +379,6 @@ contract LuckyBuy is
         } else {
             // Order failed, transfer the eth commit + fees back to the receiver
             uint256 protocolFeesPaid = feesPaid[commitData.id];
-            // Headcheck: Because fees are tracked separately, this should never happen
-            // if (protocolFeesPaid > treasuryBalance) revert InsufficientBalance();
 
             uint256 transferAmount = commitData.amount + protocolFeesPaid;
 
@@ -445,7 +448,7 @@ contract LuckyBuy is
     /// @dev Emits a CommitExpired event
     function expire(
         uint256 commitId_
-    ) external onlyCommitOwner(commitId_) nonReentrant {
+    ) external onlyCommitOwnerOrCosigner(commitId_) nonReentrant {
         if (commitId_ >= luckyBuys.length) revert InvalidCommitId();
         if (isFulfilled[commitId_]) revert AlreadyFulfilled();
         if (isExpired[commitId_]) revert CommitIsExpired();
@@ -648,11 +651,11 @@ contract LuckyBuy is
     }
 
     function setProtocolFee(uint256 protocolFee_) external onlyRole(OPS_ROLE) {
-        if (protocolFee_ > BASE_POINTS) revert InvalidProtocolFee();
         _setProtocolFee(protocolFee_);
     }
 
     function _setProtocolFee(uint256 protocolFee_) internal {
+        if (protocolFee_ > BASE_POINTS) revert InvalidProtocolFee();
         uint256 oldProtocolFee = protocolFee;
         protocolFee = protocolFee_;
         emit ProtocolFeeUpdated(oldProtocolFee, protocolFee_);
