@@ -56,7 +56,8 @@ contract LuckyBuy is
         bytes32 orderHash,
         uint256 amount,
         uint256 reward,
-        uint256 fee,
+        uint256 protocolFee,
+        uint256 flatFee,
         bytes32 digest
     );
     event CosignerAdded(address indexed cosigner);
@@ -210,6 +211,7 @@ contract LuckyBuy is
             commitAmount,
             reward_,
             protocolFee,
+            flatFee,
             digest
         );
 

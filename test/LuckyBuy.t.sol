@@ -36,6 +36,7 @@ contract TestLuckyBuyCommit is Test {
         uint256 amount,
         uint256 reward,
         uint256 fee,
+        uint256 flatFee,
         bytes32 digest
     );
     event CommitExpireTimeUpdated(
@@ -75,6 +76,7 @@ contract TestLuckyBuyCommit is Test {
             orderHash,
             amount,
             reward,
+            0,
             0,
             bytes32(0)
         );
@@ -145,6 +147,7 @@ contract TestLuckyBuyCommit is Test {
             amount,
             reward,
             0,
+            flatFeeAmount,
             bytes32(0)
         );
 
