@@ -13,7 +13,7 @@ contract MockLuckyBuy is LuckyBuy {
 }
 
 contract TestLuckyBuyCommit is Test {
-    bool skipTest = true;
+    bool skipTest = false;
 
     MockLuckyBuy luckyBuy;
     address admin = address(0x1);
@@ -87,7 +87,7 @@ contract TestLuckyBuyCommit is Test {
         if (skipTest) return;
 
         // out of base points
-        uint256 protocolFee = 100;
+        uint256 protocolFee = 0;
         vm.prank(admin);
         luckyBuy.setProtocolFee(protocolFee);
 
@@ -116,7 +116,7 @@ contract TestLuckyBuyCommit is Test {
         console.log("Reward Amount:", rewardAmount);
         console.log("\nStarting 40k game simulations...\n");
 
-        for (uint256 i = 0; i < 20_000; i++) {
+        for (uint256 i = 0; i < 1_000; i++) {
             console.log("Game", i + 1, ":");
 
             vm.startPrank(user);

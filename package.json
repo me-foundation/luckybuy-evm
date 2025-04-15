@@ -10,13 +10,20 @@
   "scripts": {
     "build": "forge build",
     "test": "forge test",
-    "coverage": "forge coverage --report lcov --ir-minimum && genhtml lcov.info --branch-coverage --output-dir coverage --ignore-errors inconsistent,mismatch,category"
+    "coverage": "forge coverage --report lcov --ir-minimum && genhtml lcov.info --branch-coverage --output-dir coverage --ignore-errors inconsistent,mismatch,category",
+    "setup:anvil": "ts-node anvil-simulations/1.setupAnvilEnvironment.ts",
+    "commit:anvil": "ts-node anvil-simulations/commitAndFulfill.ts",
+    "play:anvil": "ts-node anvil-simulations/2.playLuckyBuy.ts",
+    "play:retry": "ts-node -e \"process.on('exit', (code) => { if (code !== 0) { require('child_process').spawn(process.argv[0], ['anvil-simulations/2.playLuckyBuy.ts'], {stdio: 'inherit'}); } })\" anvil-simulations/2.playLuckyBuy.ts",
+    "simulate": "bash anvil-simulations/runSimulation.sh"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@types/node": "^22.13.9",
     "dotenv": "^16.4.7",
-    "ethers": "^6.13.5"
+    "ethers": "^6.13.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
   }
 }

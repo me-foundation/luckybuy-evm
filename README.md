@@ -21,6 +21,43 @@ The protocol works in three steps:
 - Configurable protocol fees and minimum rewards
 - Access control system
 
+## Anvil Simulations
+
+This repository includes a set of tools to simulate the LuckyBuy protocol on a local Anvil instance. These simulations allow you to test the protocol's behavior without deploying to a test or mainnet environment.
+
+### Available Simulations
+
+- **Environment Setup**: Deploys the LuckyBuy contract to a local Anvil instance
+- **Game Simulation**: Runs multiple games with configurable parameters to test the win/loss mechanics
+- **Simple Example**: Demonstrates a single commit and fulfillment process
+
+### Running Simulations
+
+1. Start an Anvil node:
+
+   ```bash
+   anvil
+   ```
+
+2. Build the contracts:
+
+   ```bash
+   forge build
+   ```
+
+3. Set up the environment:
+
+   ```bash
+   npm run setup:anvil
+   ```
+
+4. Run the game simulation:
+   ```bash
+   npm run play:anvil
+   ```
+
+For more details, see the [Anvil Simulations README](./anvil-simulations/README.md).
+
 ## Architecture
 
 ![swimlane](./docs/swimlane.png)
