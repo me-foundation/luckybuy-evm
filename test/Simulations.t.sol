@@ -36,7 +36,8 @@ contract TestLuckyBuyCommit is Test {
     uint256 amount = 1 ether;
     uint256 reward = 10 ether; // 10% odds
 
-    string constant OUTPUT_FILE = "./simulation_results.csv";
+    string OUTPUT_FILE =
+        string.concat("./simulations/simulation_results_", seedStr, ".csv");
 
     function setUp() public {
         vm.startPrank(admin);
@@ -250,6 +251,7 @@ contract TestLuckyBuyCommit is Test {
                     vm.toString(luckyBuy.treasuryBalance())
                 )
             );
+
             vm.writeLine(OUTPUT_FILE, row);
         }
     }
