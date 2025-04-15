@@ -17,7 +17,17 @@ contract TestLuckyBuyCommit is Test {
 
     MockLuckyBuy luckyBuy;
     address admin = address(0x1);
-    address user = address(0x2);
+    // Ironically, this is one of the few times that block.timestamp is actually useful as a source of randomness
+    address user =
+        address(
+            uint160(
+                uint256(
+                    keccak256(
+                        abi.encodePacked(block.timestamp, block.prevrandao)
+                    )
+                )
+            )
+        );
 
     uint256 constant COSIGNER_PRIVATE_KEY = 1234;
     address cosigner;
@@ -116,7 +126,7 @@ contract TestLuckyBuyCommit is Test {
         console.log("Reward Amount:", rewardAmount);
         console.log("\nStarting 40k game simulations...\n");
 
-        for (uint256 i = 0; i < 1_000; i++) {
+        for (uint256 i = 0; i < 20_000; i++) {
             console.log("Game", i + 1, ":");
 
             vm.startPrank(user);
