@@ -17,17 +17,10 @@ contract TestLuckyBuyCommit is Test {
 
     MockLuckyBuy luckyBuy;
     address admin = address(0x1);
-    // Ironically, this is one of the few times that block.timestamp is actually useful as a source of randomness
-    address user =
-        address(
-            uint160(
-                uint256(
-                    keccak256(
-                        abi.encodePacked(block.timestamp, block.prevrandao)
-                    )
-                )
-            )
-        );
+
+    string seedStr = vm.envOr("SEED", string("0"));
+    uint256 seedVal = uint256(keccak256(abi.encodePacked(seedStr)));
+    address user = address(uint160(seedVal));
 
     uint256 constant COSIGNER_PRIVATE_KEY = 1234;
     address cosigner;
@@ -126,7 +119,7 @@ contract TestLuckyBuyCommit is Test {
         console.log("Reward Amount:", rewardAmount);
         console.log("\nStarting 40k game simulations...\n");
 
-        for (uint256 i = 0; i < 20_000; i++) {
+        for (uint256 i = 0; i < 10_000; i++) {
             console.log("Game", i + 1, ":");
 
             vm.startPrank(user);
@@ -211,6 +204,20 @@ contract TestLuckyBuyCommit is Test {
                 abi.encodePacked(
                     vm.toString(commitId),
                     ",",
+                    vm.toString(user),
+                    ",",
+                    vm.toString(seed),
+                    ",",
+                    vm.toString(counter),
+                    ",",
+                    vm.toString(orderHash),
+                    ",",
+                    vm.toString(commitAmount),
+                    ",",
+                    vm.toString(rewardAmount),
+                    ",",
+                    vm.toString(odds),
+                    ",",
                     won ? "true" : "false",
                     ",",
                     vm.toString(
@@ -220,6 +227,8 @@ contract TestLuckyBuyCommit is Test {
                             : luckyBuy.treasuryBalance() -
                                 initialTreasuryBalance
                     ),
+                    ",",
+                    vm.toString(feeAmount),
                     ",",
                     vm.toString(luckyBuy.treasuryBalance())
                 )
