@@ -199,6 +199,19 @@ contract TestLuckyBuyCommit is Test {
             console.log("  LuckyBuy Balance:", luckyBuy.treasuryBalance());
             console.log("");
 
+            ISignatureVerifier.CommitData memory commitData = ISignatureVerifier
+                .CommitData({
+                    id: commitId,
+                    receiver: user,
+                    cosigner: cosigner,
+                    seed: seed,
+                    counter: counter,
+                    orderHash: orderHash,
+                    amount: amount,
+                    reward: reward
+                });
+
+            bytes32 digest = luckyBuy.hash(commitData);
             // Write to CSV
             string memory row = string(
                 abi.encodePacked(
@@ -215,6 +228,10 @@ contract TestLuckyBuyCommit is Test {
                     vm.toString(commitAmount),
                     ",",
                     vm.toString(rewardAmount),
+                    ",",
+                    vm.toString(digest),
+                    ",",
+                    vm.toString(signature),
                     ",",
                     vm.toString(odds),
                     ",",
