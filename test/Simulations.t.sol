@@ -33,8 +33,6 @@ contract TestLuckyBuyCommit is Test {
     address orderToken = address(0);
     uint256 orderTokenId = 0;
     bytes32 orderHash = hex"";
-    uint256 amount = 1 ether;
-    uint256 reward = 10 ether; // 10% odds
 
     string OUTPUT_FILE =
         string.concat("./simulations/simulation_results_", seedStr, ".csv");
@@ -42,10 +40,10 @@ contract TestLuckyBuyCommit is Test {
     function setUp() public {
         vm.startPrank(admin);
         luckyBuy = new MockLuckyBuy(protocolFee);
-        vm.deal(admin, 1000000 ether);
-        vm.deal(user, 100000 ether);
+        vm.deal(admin, 100_000 ether);
+        vm.deal(user, 100_000 ether);
 
-        (bool success, ) = address(luckyBuy).call{value: 10000 ether}("");
+        (bool success, ) = address(luckyBuy).call{value: 300 ether}("");
         require(success, "Failed to deploy contract");
 
         // Set up cosigner with known private key
@@ -91,37 +89,44 @@ contract TestLuckyBuyCommit is Test {
         if (skipTest) return;
 
         // out of base points
-        uint256 protocolFee = 0;
+        uint256 protocolFee = 500;
         vm.prank(admin);
         luckyBuy.setProtocolFee(protocolFee);
+
+        uint256 rewardAmount = 30 ether;
+        uint256 onePercent = rewardAmount / 100;
+        uint256 seventyFivePercent = (rewardAmount * 75) / 100;
 
         // Create order hash for a simple ETH transfer - this stays the same for all plays
         bytes32 orderHash = luckyBuy.hashOrder(
             address(0), // to address(0)
-            1 ether, // amount 1 ether (reward amount)
+            rewardAmount, // amount 1 ether (reward amount)
             "", // no data
             address(0), // no token
             0 // no token id
         );
 
-        // Calculate odds: amount/reward = 0.1/1 = 10%
-
-        uint256 commitAmount = 0.5 ether;
-        uint256 rewardAmount = 1 ether;
-        uint256 feeAmount = luckyBuy.calculateFee(rewardAmount); // This should be .005 ether
-
-        uint256 commitTxAmount = commitAmount + feeAmount;
-        console.log("commitTxAmount", commitTxAmount);
-
-        uint256 odds = (commitAmount * 100000) / rewardAmount;
-        console.log("\nGame Parameters:");
-        console.log("Odds of winning (basis points):", odds); // Should be 1000 (10%)
-        console.log("Commit Amount:", commitAmount);
-        console.log("Reward Amount:", rewardAmount);
-        console.log("\nStarting 40k game simulations...\n");
-
-        for (uint256 i = 0; i < 10_000; i++) {
+        for (uint256 i = 0; i < 1_000; i++) {
             console.log("Game", i + 1, ":");
+            // Random value between 1 and 75% of the reward
+            // uint256 commitAmount = (uint256(
+            //     keccak256(abi.encodePacked(seed, i))
+            // ) % seventyFivePercent) + onePercent;
+
+            // Comment above if you want to baseline against a constant commit amount
+            uint256 commitAmount = 15 ether;
+
+            uint256 feeAmount = luckyBuy.calculateFee(commitAmount); // This should be .005 ether
+
+            uint256 commitTxAmount = commitAmount + feeAmount;
+            console.log("commitTxAmount", commitTxAmount);
+
+            uint256 odds = (commitAmount * 100000) / rewardAmount;
+            console.log("\nGame Parameters:");
+            console.log("Odds of winning (basis points):", odds); // Should be 1000 (10%)
+            console.log("Commit Amount:", commitAmount);
+            console.log("Reward Amount:", rewardAmount);
+            console.log("\nStarting game simulations...\n");
 
             vm.startPrank(user);
             console.log(commitAmount + feeAmount);
@@ -160,13 +165,13 @@ contract TestLuckyBuyCommit is Test {
 
             // Sign the commit
             bytes memory signature = signCommit(
-                commitId,
-                user,
-                seed,
-                counter,
-                orderHash,
-                commitAmount,
-                rewardAmount
+                _id,
+                _receiver,
+                _seed,
+                _counter,
+                _orderHash,
+                _amount,
+                _reward
             );
 
             // Track treasury balance for win/loss determination
@@ -208,8 +213,8 @@ contract TestLuckyBuyCommit is Test {
                     seed: seed,
                     counter: counter,
                     orderHash: orderHash,
-                    amount: amount,
-                    reward: reward
+                    amount: commitAmount,
+                    reward: rewardAmount
                 });
 
             bytes32 digest = luckyBuy.hash(commitData);
