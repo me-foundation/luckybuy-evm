@@ -106,6 +106,7 @@ contract TestLuckyBuyCommit is Test {
             0 // no token id
         );
 
+        // This can be optimized to 10,000 plays. I just have some extra logic in the loop right now for testing. Refactor some code out if you want to run 10,000 plays.
         for (uint256 i = 0; i < 1_000; i++) {
             console.log("Game", i + 1, ":");
             // Random value between 1 and 75% of the reward
