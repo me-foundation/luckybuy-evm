@@ -53,7 +53,7 @@ contract TestLuckyBuyCommit is Test {
 
     function setUp() public {
         vm.startPrank(admin);
-        luckyBuy = new MockLuckyBuy(protocolFee, msg.sender);
+        luckyBuy = new MockLuckyBuy(protocolFee, admin);
         vm.deal(admin, 100 ether);
         vm.deal(receiver, 100 ether);
         vm.deal(address(this), 100 ether);
@@ -1186,6 +1186,28 @@ contract TestLuckyBuyCommit is Test {
         assertEq(luckyBuy.openEditionToken(), address(1));
         assertEq(luckyBuy.openEditionTokenId(), 1);
         assertEq(luckyBuy.openEditionTokenAmount(), 1);
+    }
+
+    function testFeeReceiver() public {
+        assertEq(luckyBuy.feeReceiver(), admin);
+
+        vm.startPrank(admin);
+        luckyBuy.setFeeReceiver(address(this));
+        vm.stopPrank();
+
+        assertEq(luckyBuy.feeReceiver(), address(this));
+
+        uint256 initialBalance = address(this).balance;
+
+        vm.startPrank(admin);
+        address(luckyBuy).call{value: 10 ether}("");
+
+        luckyBuy.withdraw(10 ether);
+        vm.stopPrank();
+
+        uint256 finalBalance = address(this).balance;
+
+        assertEq(finalBalance, initialBalance + 10 ether);
     }
 
     receive() external payable {}

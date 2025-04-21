@@ -415,7 +415,7 @@ contract LuckyBuy is
         if (amount > treasuryBalance) revert InsufficientBalance();
         treasuryBalance -= amount;
 
-        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        (bool success, ) = payable(feeReceiver).call{value: amount}("");
         if (!success) revert WithdrawalFailed();
 
         emit Withdrawal(msg.sender, amount);
@@ -434,7 +434,7 @@ contract LuckyBuy is
         protocolBalance = 0;
 
         uint256 currentBalance = address(this).balance;
-        (bool success, ) = payable(msg.sender).call{value: currentBalance}("");
+        (bool success, ) = payable(feeReceiver).call{value: currentBalance}("");
         if (!success) revert WithdrawalFailed();
 
         _pause();
