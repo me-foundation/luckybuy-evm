@@ -26,7 +26,7 @@ contract DeployLuckyBuy is Script {
         uint256 protocolFee = 500; // 5%
 
         vm.startBroadcast(deployerPrivateKey);
-        LuckyBuy luckyBuy = new LuckyBuy(protocolFee);
+        LuckyBuy luckyBuy = new LuckyBuy(protocolFee, msg.sender);
 
         console.log(address(luckyBuy));
 

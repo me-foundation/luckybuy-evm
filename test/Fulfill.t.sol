@@ -17,7 +17,10 @@ import "src/LuckyBuy.sol";
 //   --data-raw '{"items":[{"key":"0x415a82e77642113701fe190554fddd7701c3b262:8295","token":"0x415a82e77642113701fe190554fddd7701c3b262:8295","is1155":false,"source":"opensea.io","fillType":"trade","quantity":1}],"taker":"0x522B3294E6d06aA25Ad0f1B8891242E335D3B459","source":"magiceden.us","partial":true,"currency":"0x0000000000000000000000000000000000000000","currencyChainId":1,"forwarderChannel":"0x5ebc127fae83ed5bdd91fc6a5f5767E259dF5642","maxFeePerGas":"100000000000","maxPriorityFeePerGas":"100000000000","normalizeRoyalties":false}'
 
 contract MockLuckyBuy is LuckyBuy {
-    constructor(uint256 protocolFee_) LuckyBuy(protocolFee_) {}
+    constructor(
+        uint256 protocolFee_,
+        address feeReceiver_
+    ) LuckyBuy(protocolFee_, feeReceiver_) {}
 
     function fulfillOrder(
         address txTo_,
@@ -122,7 +125,7 @@ contract FulfillTest is Test {
             shouldRunTests = true;
 
             vm.startPrank(admin);
-            luckyBuy = new MockLuckyBuy(0);
+            luckyBuy = new MockLuckyBuy(0, msg.sender);
             vm.deal(admin, 100 ether);
             vm.deal(address(this), 100 ether);
             vm.deal(user2, 100 ether);

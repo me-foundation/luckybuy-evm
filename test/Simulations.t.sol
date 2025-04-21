@@ -5,7 +5,10 @@ import "forge-std/Test.sol";
 import "src/LuckyBuy.sol";
 
 contract MockLuckyBuy is LuckyBuy {
-    constructor(uint256 protocolFee_) LuckyBuy(protocolFee_) {}
+    constructor(
+        uint256 protocolFee_,
+        address feeReceiver_
+    ) LuckyBuy(protocolFee_, feeReceiver_) {}
 
     function setIsFulfilled(uint256 commitId_, bool isFulfilled_) public {
         isFulfilled[commitId_] = isFulfilled_;
@@ -37,7 +40,7 @@ contract TestLuckyBuyCommit is Test {
 
     function setUp() public {
         vm.startPrank(admin);
-        luckyBuy = new MockLuckyBuy(protocolFee);
+        luckyBuy = new MockLuckyBuy(protocolFee, msg.sender);
         vm.deal(admin, 1000000 ether);
         vm.deal(user, 100000 ether);
 

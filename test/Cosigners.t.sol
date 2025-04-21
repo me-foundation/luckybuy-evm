@@ -19,7 +19,7 @@ contract TestLuckyBuyCosigners is Test {
 
     function setUp() public {
         vm.startPrank(admin);
-        luckyBuy = new LuckyBuy(protocolFee);
+        luckyBuy = new LuckyBuy(protocolFee, msg.sender);
         vm.stopPrank();
     }
 

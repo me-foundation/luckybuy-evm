@@ -17,6 +17,7 @@ contract LuckyBuy is
     PRNG,
     ReentrancyGuard
 {
+    address payable public feeReceiver;
     // We will not track our supply on this contract. We will mint a yuge amount and never run out on the oe.
     address public openEditionToken;
     uint256 public openEditionTokenId;
@@ -88,6 +89,10 @@ contract LuckyBuy is
         uint256 indexed tokenId,
         uint256 amount
     );
+    event FeeReceiverUpdated(
+        address indexed oldFeeReceiver,
+        address indexed newFeeReceiver
+    );
 
     error AlreadyCosigner();
     error AlreadyFulfilled();
@@ -106,7 +111,7 @@ contract LuckyBuy is
     error CommitIsExpired();
     error CommitNotExpired();
     error TransferFailed();
-
+    error InvalidFeeReceiver();
     modifier onlyCommitOwnerOrCosigner(uint256 commitId_) {
         if (
             luckyBuys[commitId_].receiver != msg.sender &&
@@ -118,7 +123,8 @@ contract LuckyBuy is
     /// @notice Constructor initializes the contract and handles any pre-existing balance
     /// @dev Sets up EIP712 domain separator and deposits any ETH sent during deployment
     constructor(
-        uint256 protocolFee_
+        uint256 protocolFee_,
+        address feeReceiver_
     ) MEAccessControl() SignatureVerifier("LuckyBuy", "1") {
         uint256 existingBalance = address(this).balance;
         if (existingBalance > 0) {
@@ -126,6 +132,7 @@ contract LuckyBuy is
         }
 
         _setProtocolFee(protocolFee_);
+        _setFeeReceiver(feeReceiver_);
     }
 
     /// @notice Allows a user to commit funds for a chance to win
@@ -651,5 +658,18 @@ contract LuckyBuy is
         uint256 oldProtocolFee = protocolFee;
         protocolFee = protocolFee_;
         emit ProtocolFeeUpdated(oldProtocolFee, protocolFee_);
+    }
+
+    function setFeeReceiver(
+        address feeReceiver_
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _setFeeReceiver(feeReceiver_);
+    }
+
+    function _setFeeReceiver(address feeReceiver_) internal {
+        if (feeReceiver_ == address(0)) revert InvalidFeeReceiver();
+        address oldFeeReceiver = feeReceiver;
+        feeReceiver = payable(feeReceiver_);
+        emit FeeReceiverUpdated(oldFeeReceiver, feeReceiver_);
     }
 }
