@@ -22,7 +22,8 @@ contract AccessControlTest is Test {
         user = makeAddr("user");
 
         vm.startPrank(admin);
-        luckyBuy = new LuckyBuy(0, 0); // Initialize with 0 protocol fee
+        luckyBuy = new LuckyBuy(0, 0, msg.sender); // Initialize with 0 protocol fee
+
         vm.stopPrank();
     }
 

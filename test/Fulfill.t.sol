@@ -19,8 +19,9 @@ import "src/LuckyBuy.sol";
 contract MockLuckyBuy is LuckyBuy {
     constructor(
         uint256 protocolFee_,
-        uint256 flatFee_
-    ) LuckyBuy(protocolFee_, flatFee_) {}
+        uint256 flatFee_,
+        address feeReceiver_
+    ) LuckyBuy(protocolFee_, flatFee_, feeReceiver_) {}
 
     function fulfillOrder(
         address txTo_,
@@ -126,7 +127,7 @@ contract FulfillTest is Test {
             shouldRunTests = true;
 
             vm.startPrank(admin);
-            luckyBuy = new MockLuckyBuy(0, 0);
+            luckyBuy = new MockLuckyBuy(0, 0, msg.sender);
             vm.deal(admin, 100 ether);
             vm.deal(address(this), 100 ether);
             vm.deal(user2, 100 ether);
