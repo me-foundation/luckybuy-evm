@@ -511,6 +511,11 @@ contract LuckyBuy is
         return (_amount * protocolFee) / BASE_POINTS;
     }
 
+    // deprecated, for backwards compatibility
+    function calculateFee(uint256 _amount) external view returns (uint256) {
+        return _calculateProtocolFee(_amount);
+    }
+
     /// @notice Calculates contribution amount after removing fee
     /// @param amount The original amount including fee
     /// @return The contribution amount without the fee
