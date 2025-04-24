@@ -335,7 +335,7 @@ contract FulfillTest is Test {
         // backend builds the commit data off chain. The user should technically choose the cosigner or we could be accused of trying random cosigners until we find one that benefits us.
         uint256 seed = 12345; // User provides this data
 
-        uint256 commitFee = luckyBuy.calculateFee(COMMIT_AMOUNT);
+        uint256 commitFee = luckyBuy.calculateProtocolFee(COMMIT_AMOUNT);
 
         // User submits the commit data from the back end with their payment to the contract
         vm.expectEmit(true, true, true, false);
@@ -558,7 +558,7 @@ contract FulfillTest is Test {
 
         uint256 seed = 12345; // User provides this data
 
-        uint256 commitFee = luckyBuy.calculateFee(COMMIT_AMOUNT);
+        uint256 commitFee = luckyBuy.calculateProtocolFee(COMMIT_AMOUNT);
         // User submits the commit data from the back end with their payment to the contract
         // vm.expectEmit(true, true, true, false);
         // emit Commit(

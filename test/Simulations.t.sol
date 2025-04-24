@@ -108,7 +108,7 @@ contract TestLuckyBuyCommit is Test {
 
         uint256 commitAmount = 0.5 ether;
         uint256 rewardAmount = 1 ether;
-        uint256 feeAmount = luckyBuy.calculateFee(rewardAmount); // This should be .005 ether
+        uint256 feeAmount = luckyBuy.calculateProtocolFee(rewardAmount); // This should be .005 ether
 
         uint256 commitTxAmount = commitAmount + feeAmount;
         console.log("commitTxAmount", commitTxAmount);

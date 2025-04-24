@@ -499,11 +499,15 @@ contract LuckyBuy is
     /// @param _amount The amount to calculate fee on
     /// @return The calculated fee amount
     /// @dev Uses fee denominator of 10000 (100% = 10000)
-    function calculateFee(uint256 _amount) external view returns (uint256) {
-        return _calculateFee(_amount);
+    function calculateProtocolFee(
+        uint256 _amount
+    ) external view returns (uint256) {
+        return _calculateProtocolFee(_amount);
     }
 
-    function _calculateFee(uint256 _amount) internal view returns (uint256) {
+    function _calculateProtocolFee(
+        uint256 _amount
+    ) internal view returns (uint256) {
         return (_amount * protocolFee) / BASE_POINTS;
     }
 

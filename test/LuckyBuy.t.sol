@@ -811,7 +811,7 @@ contract TestLuckyBuyCommit is Test {
         luckyBuy.setProtocolFee(protocolFee);
         vm.stopPrank();
 
-        uint256 fee = luckyBuy.calculateFee(amount);
+        uint256 fee = luckyBuy.calculateProtocolFee(amount);
         assertEq(fee, (amount * protocolFee) / luckyBuy.BASE_POINTS());
     }
 
@@ -828,8 +828,8 @@ contract TestLuckyBuyCommit is Test {
 
         assertNotEq(amount, reward);
 
-        uint256 fee = luckyBuy.calculateFee(amount);
-        uint256 rewardFee = luckyBuy.calculateFee(reward);
+        uint256 fee = luckyBuy.calculateProtocolFee(amount);
+        uint256 rewardFee = luckyBuy.calculateProtocolFee(reward);
 
         assertNotEq(fee, rewardFee);
 
@@ -866,7 +866,7 @@ contract TestLuckyBuyCommit is Test {
         assertEq(amountWithFee, address(luckyBuy).balance);
 
         assertEq(
-            luckyBuy.calculateFee(amount),
+            luckyBuy.calculateProtocolFee(amount),
             amountWithFee - amount,
             "Fee should be the same"
         );
