@@ -98,6 +98,10 @@ contract LuckyBuy is
         address indexed oldFeeReceiver,
         address indexed newFeeReceiver
     );
+    event OpenEditionContractTransferred(
+        address indexed oldOwner,
+        address indexed newOwner
+    );
 
     error AlreadyCosigner();
     error AlreadyFulfilled();
@@ -538,9 +542,19 @@ contract LuckyBuy is
     function transferOpenEditionContractOwnership(
         address newOwner
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        address oldOwner = IERC1155MInitializableV1_0_2(openEditionToken)
+            .owner();
         IERC1155MInitializableV1_0_2(openEditionToken).transferOwnership(
             newOwner
         );
+
+        _setOpenEditionToken(
+            openEditionToken,
+            openEditionTokenId,
+            openEditionTokenAmount
+        );
+
+        emit OpenEditionContractTransferred(oldOwner, newOwner);
     }
 
     // ############################################################
