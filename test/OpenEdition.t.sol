@@ -36,21 +36,11 @@ contract MockERC1155 is ERC1155 {
     ) public onlyAuthorizedMinter {
         _mint(to, id, amount, "");
     }
-    /// @notice Allows authorized minters to mint tokens for a specified address
-    /// @param to The address to mint tokens for
-    /// @param tokenId The ID of the token to mint
-    /// @param qty The quantity to mint
-    /// @param limit The minting limit for the recipient (used in merkle proofs)
-    /// @param proof The merkle proof for allowlist minting
-    function authorizedMint(
+    function ownerMint(
         address to,
         uint256 tokenId,
-        uint32 qty,
-        uint32 limit,
-        bytes32[] calldata proof
+        uint32 qty
     ) external payable onlyAuthorizedMinter {
-        // limit and proof can be empty in the implementation
-        //_mintInternal(to, tokenId, qty, limit, proof);
         _mint(to, tokenId, qty, "");
     }
 }
