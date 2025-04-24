@@ -5,21 +5,30 @@ import "forge-std/Test.sol";
 import "src/LuckyBuy.sol";
 
 import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-
+import {IERC1155MInitializableV1_0_2} from "src/common/interfaces/IERC1155MInitializableV1_0_2.sol";
 contract MockLuckyBuy is LuckyBuy {
+    address public owner;
     constructor(
         uint256 protocolFee_,
         uint256 flatFee_,
         address feeReceiver_
-    ) LuckyBuy(protocolFee_, flatFee_, feeReceiver_) {}
+    ) LuckyBuy(protocolFee_, flatFee_, feeReceiver_) {
+        owner = msg.sender;
+    }
 
     function setIsFulfilled(uint256 commitId_, bool isFulfilled_) public {
         isFulfilled[commitId_] = isFulfilled_;
     }
+
+    function transferOwnership(address newOwner) public {
+        owner = newOwner;
+    }
 }
 
-contract MockERC1155 is ERC1155 {
+// Some of these changes may be redundant, e.g. owner/admin but we are quickly swapping out implementations right now
+contract MockERC1155 is ERC1155, IERC1155MInitializableV1_0_2 {
     address public admin;
+    address public owner;
     modifier onlyAuthorizedMinter() {
         require(msg.sender == admin, "Only admin can call this function");
         _;
@@ -27,6 +36,7 @@ contract MockERC1155 is ERC1155 {
 
     constructor(string memory uri_, address admin_) ERC1155(uri_) {
         admin = admin_;
+        owner = msg.sender;
     }
 
     function mint(
@@ -40,8 +50,12 @@ contract MockERC1155 is ERC1155 {
         address to,
         uint256 tokenId,
         uint32 qty
-    ) external payable onlyAuthorizedMinter {
+    ) external onlyAuthorizedMinter {
         _mint(to, tokenId, qty, "");
+    }
+
+    function transferOwnership(address newOwner) public {
+        owner = newOwner;
     }
 }
 
@@ -257,5 +271,18 @@ contract TestLuckyBuyOpenEdition is Test {
         vm.stopPrank();
 
         assertEq(openEditionToken.balanceOf(address(user), 1), 0);
+    }
+
+    function testOpenEditionTransfer() public {
+        assertEq(openEditionToken.owner(), admin);
+
+        vm.prank(admin);
+        luckyBuy.transferOpenEditionContractOwnership(address(user));
+
+        vm.expectRevert();
+        vm.prank(admin);
+        openEditionToken.mint(address(user), 1, 1);
+
+        assertEq(openEditionToken.owner(), user);
     }
 }

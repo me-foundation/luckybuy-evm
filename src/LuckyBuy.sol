@@ -532,6 +532,18 @@ contract LuckyBuy is
     }
 
     // ############################################################
+    // ############ MANAGEMENT ############
+    // ############################################################
+
+    function transferOpenEditionContractOwnership(
+        address newOwner
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        IERC1155MInitializableV1_0_2(openEditionToken).transferOwnership(
+            newOwner
+        );
+    }
+
+    // ############################################################
     // ############ GETTERS & SETTERS ############
     // ############################################################
 
