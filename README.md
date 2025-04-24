@@ -92,3 +92,51 @@ The protocol has several critical security considerations that should be careful
    - The commit/reveal scheme helps protect against front-running.
 
 These security considerations should be carefully reviewed during the security audit, with particular attention to the cosigner system and random number generation implementation.
+
+## Fee Calculations
+
+The LuckyBuy protocol implements a two-tier fee structure:
+
+### Fee Structure
+
+1. **Flat Fee**: A fixed amount taken off the top of every commit. This pays for the transfer fee of the Open Edition token
+
+   - This fee is added directly to the treasury balance
+   - It is not subject to the protocol fee calculation
+   - It is not returned to the user, even if the commit expires
+
+2. **Protocol Fee**: A percentage-based fee calculated on the amount after the flat fee
+   - This fee is calculated using the formula: `protocolFee = (amount * protocolFee) / BASE_POINTS`
+   - The protocol fee is tracked separately in the `protocolBalance`
+   - It is returned to the user if the commit expires
+
+### Fee Calculation Process
+
+When a user commits funds, the following calculations occur:
+
+1. The flat fee is subtracted from the total amount sent: `amountAfterFlatFee = msg.value - flatFee`
+2. The commit amount is calculated by applying the protocol fee formula to the amount after flat fee: `commitAmount = (amountAfterFlatFee * BASE_POINTS) / (BASE_POINTS + protocolFee)`
+3. The protocol fee is calculated as the difference: `protocolFee = amountAfterFlatFee - commitAmount`
+
+### Example Calculation
+
+For a commit with:
+
+- Total amount sent: 1.01 ETH
+- Flat fee: 0.01 ETH
+- Protocol fee: 5% (500 basis points)
+
+The calculation would be:
+
+1. Amount after flat fee: 1.01 ETH - 0.01 ETH = 1 ETH
+2. Protocol fee: 1 ETH \* 5% = 0.05 ETH
+3. Commit amount: 0.95 ETH
+
+### Fee Configuration
+
+The fees can be configured by the contract admin:
+
+- `setFlatFee(uint256 flatFee_)`: Sets the flat fee amount
+- `setProtocolFee(uint256 protocolFee_)`: Sets the protocol fee percentage (in basis points)
+
+The protocol fee is limited to a maximum of 100% (10000 basis points).
