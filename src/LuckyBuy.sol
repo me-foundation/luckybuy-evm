@@ -518,8 +518,7 @@ contract LuckyBuy is
         uint256 tokenId_,
         uint32 amount_
     ) external onlyRole(OPS_ROLE) {
-        bytes32[] memory emptyProof;
-        _setOpenEditionToken(token_, tokenId_, amount_, 0, emptyProof);
+        _setOpenEditionToken(token_, tokenId_, amount_, 0, new bytes32[](0));
     }
     /// @notice Sets the open edition token. We allow address(0) here.
     /// @param token_ Address of the open edition token
