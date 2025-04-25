@@ -20,6 +20,7 @@ contract OpenEdition is ERC1155 {
 }
 
 contract DeployLuckyBuy is Script {
+    address feeReceiver = 0x85d31445AF0b0fF26851bf3C5e27e90058Df3270;
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
@@ -27,7 +28,7 @@ contract DeployLuckyBuy is Script {
         uint256 flatFee = 0;
 
         vm.startBroadcast(deployerPrivateKey);
-        LuckyBuy luckyBuy = new LuckyBuy(protocolFee, flatFee, msg.sender);
+        LuckyBuy luckyBuy = new LuckyBuy(protocolFee, flatFee, feeReceiver);
 
         console.log(address(luckyBuy));
 
@@ -35,34 +36,36 @@ contract DeployLuckyBuy is Script {
     }
 }
 
+// deprecated
 contract DeployOpenEdition is Script {
     address luckyBuy = 0x85d31445AF0b0fF26851bf3C5e27e90058Df3270;
 
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-
-        vm.startBroadcast(deployerPrivateKey);
-
-        OpenEdition openEditionToken = new OpenEdition();
-
-        openEditionToken.mint(luckyBuy, 1, 1000 ether, "");
-
-        vm.stopBroadcast();
+        //uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        //
+        //vm.startBroadcast(deployerPrivateKey);
+        //
+        //OpenEdition openEditionToken = new OpenEdition();
+        //
+        //openEditionToken.mint(luckyBuy, 1, 1000 ether, "");
+        //
+        //vm.stopBroadcast();
     }
 }
 
+// deprecated
 contract MintOpenEdition is Script {
     address luckyBuy = 0x85d31445AF0b0fF26851bf3C5e27e90058Df3270;
     address openEditionToken = 0x62A3A7ebc812810f868ef52be81935147Ed9456c;
 
     function run() external {
-        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
-
-        vm.startBroadcast(deployerPrivateKey);
-
-        OpenEdition(openEditionToken).mint(luckyBuy, 1, 1000 ether, "");
-
-        vm.stopBroadcast();
+        //uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        //
+        //vm.startBroadcast(deployerPrivateKey);
+        //
+        //OpenEdition(openEditionToken).mint(luckyBuy, 1, 1000 ether, "");
+        //
+        //vm.stopBroadcast();
     }
 }
 

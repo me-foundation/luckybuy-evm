@@ -20,6 +20,7 @@ The protocol works in three steps:
 - Commit expiration system
 - Configurable protocol fees and minimum rewards
 - Access control system
+- Fee Receiver: 0x85d31445AF0b0fF26851bf3C5e27e90058Df3270
 
 ## Architecture
 
