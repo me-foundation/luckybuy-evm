@@ -55,8 +55,8 @@ contract DeployOpenEdition is Script {
 
 // deprecated
 contract MintOpenEdition is Script {
-    address luckyBuy = 0x85d31445AF0b0fF26851bf3C5e27e90058Df3270;
-    address openEditionToken = 0x62A3A7ebc812810f868ef52be81935147Ed9456c;
+    address luckyBuy = 0xE6b247ea4dD0C77A3EF8d99a30b4877a779e1c9C;
+    address openEditionToken = 0x3e988D49b3dE913FcE7D4ea0037919345ebDC3F8;
 
     function run() external {
         //uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
@@ -71,15 +71,21 @@ contract MintOpenEdition is Script {
 
 contract SetOpenEditionToken is Script {
     address payable luckyBuy =
-        payable(0x85d31445AF0b0fF26851bf3C5e27e90058Df3270);
-    address openEditionToken = 0x62A3A7ebc812810f868ef52be81935147Ed9456c;
+        payable(0xE6b247ea4dD0C77A3EF8d99a30b4877a779e1c9C);
+    address openEditionToken = 0x3e988D49b3dE913FcE7D4ea0037919345ebDC3F8;
+    uint256 tokenId = 0;
+    uint32 amount = 1;
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
         vm.startBroadcast(deployerPrivateKey);
 
-        LuckyBuy(luckyBuy).setOpenEditionToken(openEditionToken, 1, 1);
+        LuckyBuy(luckyBuy).setOpenEditionToken(
+            openEditionToken,
+            tokenId,
+            amount
+        );
 
         vm.stopBroadcast();
     }
@@ -87,7 +93,7 @@ contract SetOpenEditionToken is Script {
 
 contract AddCosigner is Script {
     address payable luckyBuy =
-        payable(0x85d31445AF0b0fF26851bf3C5e27e90058Df3270);
+        payable(0xE6b247ea4dD0C77A3EF8d99a30b4877a779e1c9C);
     address cosigner = 0x993f64E049F95d246dc7B0D196CB5dC419d4e1f1;
 
     function run() external {
@@ -103,7 +109,7 @@ contract AddCosigner is Script {
 
 contract getLuckyBuy is Script {
     address payable luckyBuy =
-        payable(0x85d31445AF0b0fF26851bf3C5e27e90058Df3270);
+        payable(0xE6b247ea4dD0C77A3EF8d99a30b4877a779e1c9C);
 
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");

@@ -14,6 +14,22 @@ contract MockLuckyBuy is LuckyBuy {
     function setIsFulfilled(uint256 commitId_, bool isFulfilled_) public {
         isFulfilled[commitId_] = isFulfilled_;
     }
+
+    /// @notice Calculates fee amount based on input amount and fee percentage
+    /// @param _amount The amount to calculate fee on
+    /// @return The calculated fee amount
+    /// @dev Uses fee denominator of 10000 (100% = 10000)
+    function calculateProtocolFee(
+        uint256 _amount
+    ) external view returns (uint256) {
+        return _calculateProtocolFee(_amount);
+    }
+
+    function _calculateProtocolFee(
+        uint256 _amount
+    ) internal view returns (uint256) {
+        return (_amount * protocolFee) / BASE_POINTS;
+    }
 }
 
 contract TestLuckyBuyCommit is Test {

@@ -141,3 +141,15 @@ The fees can be configured by the contract admin:
 - `setProtocolFee(uint256 protocolFee_)`: Sets the protocol fee percentage (in basis points)
 
 The protocol fee is limited to a maximum of 100% (10000 basis points).
+
+## Deployments
+
+Current Mainnet: 0xE6b247ea4dD0C77A3EF8d99a30b4877a779e1c9C
+Cosigner: 0x993f64E049F95d246dc7B0D196CB5dC419d4e1f1
+Fee Receiver: 0x85d31445AF0b0fF26851bf3C5e27e90058Df3270
+Fee Amount: 5%
+Flat Fee Amount: 0
+
+OpenEdition: 0x3e988D49b3dE913FcE7D4ea0037919345ebDC3F8
+Token Id: 0
+Amount: 1

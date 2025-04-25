@@ -493,27 +493,6 @@ contract LuckyBuy is
         emit CommitExpired(commitId_, hash(commitData));
     }
 
-    /// @notice Calculates fee amount based on input amount and fee percentage
-    /// @param _amount The amount to calculate fee on
-    /// @return The calculated fee amount
-    /// @dev Uses fee denominator of 10000 (100% = 10000)
-    function calculateProtocolFee(
-        uint256 _amount
-    ) external view returns (uint256) {
-        return _calculateProtocolFee(_amount);
-    }
-
-    function _calculateProtocolFee(
-        uint256 _amount
-    ) internal view returns (uint256) {
-        return (_amount * protocolFee) / BASE_POINTS;
-    }
-
-    // deprecated, for backwards compatibility
-    function calculateFee(uint256 _amount) external view returns (uint256) {
-        return _calculateProtocolFee(_amount);
-    }
-
     /// @notice Calculates contribution amount after removing fee
     /// @param amount The original amount including fee
     /// @return The contribution amount without the fee
