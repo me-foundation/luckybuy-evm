@@ -397,15 +397,11 @@ contract LuckyBuy is
                 digest
             );
         } else {
-            // Order failed, transfer the eth commit + fees back to the receiver
-            uint256 protocolFeesPaid = feesPaid[commitData.id];
-
-            uint256 transferAmount = commitData.amount + protocolFeesPaid;
-
-            treasuryBalance -= transferAmount;
+            // The order failed to fulfill, it could be bought already or invalid, make the best effort to send the user the value of the order they won.
+            treasuryBalance -= orderAmount_;
 
             // This can also revert if the receiver is a contract that doesn't accept ETH
-            (bool success, ) = commitData.receiver.call{value: transferAmount}(
+            (bool success, ) = commitData.receiver.call{value: orderAmount_}(
                 ""
             );
             if (!success) revert TransferFailed();
@@ -418,7 +414,7 @@ contract LuckyBuy is
                 win_,
                 address(0),
                 0,
-                transferAmount,
+                orderAmount_,
                 commitData.receiver,
                 protocolFeesPaid,
                 digest

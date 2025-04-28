@@ -72,7 +72,7 @@ contract MintOpenEdition is Script {
 contract SetOpenEditionToken is Script {
     address payable luckyBuy =
         payable(0xE6b247ea4dD0C77A3EF8d99a30b4877a779e1c9C);
-    address openEditionToken = 0x3e988D49b3dE913FcE7D4ea0037919345ebDC3F8;
+    address openEditionToken = 0x4CB756f71A63785a40d2d2D5a7AE56caAb9f9BCa;
     uint256 tokenId = 0;
     uint32 amount = 1;
 
@@ -86,6 +86,22 @@ contract SetOpenEditionToken is Script {
             tokenId,
             amount
         );
+
+        vm.stopBroadcast();
+    }
+}
+
+contract SetFeeReceiverAddress is Script {
+    address payable luckyBuy =
+        payable(0xE6b247ea4dD0C77A3EF8d99a30b4877a779e1c9C);
+    address feeReceiver = 0x2918F39540df38D4c33cda3bCA9edFccd8471cBE;
+
+    function run() external {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+
+        vm.startBroadcast(deployerPrivateKey);
+
+        LuckyBuy(luckyBuy).setFeeReceiver(feeReceiver);
 
         vm.stopBroadcast();
     }
