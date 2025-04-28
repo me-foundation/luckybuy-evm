@@ -289,5 +289,6 @@ contract TestLuckyBuyOpenEdition is Test {
 
         vm.prank(admin);
         luckyBuy.transferOpenEditionContractOwnership(address(user));
+        assertEq(openEditionToken.owner(), address(user));
     }
 }
