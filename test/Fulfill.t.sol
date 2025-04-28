@@ -328,6 +328,9 @@ contract FulfillTest is Test {
             return;
         }
 
+        uint256 initialUser1Balance = RECEIVER.balance;
+        uint256 initialUser2Balance = user2.balance;
+
         luckyBuy.reconcileBalance();
 
         uint256 protocolFee = 100;
@@ -452,7 +455,7 @@ contract FulfillTest is Test {
             treasuryBalance - (REWARD - COMMIT_AMOUNT) + commitFee
         );
         assertEq(luckyBuy.protocolBalance(), protocolBalance - commitFee);
-
+        console.log(address(luckyBuy).balance);
         // This will fulfill but it will transfer eth.
         luckyBuy.fulfill(
             1,
@@ -466,8 +469,20 @@ contract FulfillTest is Test {
         luckyBuy.reconcileBalance();
         // check the balance of the contract
         // One commit was returned to the user and the other was used to fulfill the order, the fulfill is kept.
-        assertEq(address(luckyBuy).balance, FUND_AMOUNT + commitFee);
+        // Commit fee x2 is what we profit. Both users won, but the second user received the value of the reward instead of the NFT.
+        assertEq(address(luckyBuy).balance, FUND_AMOUNT + commitFee * 2);
 
+        // User 1 balance is less the commit amount and fees paid
+        assertEq(
+            RECEIVER.balance,
+            initialUser1Balance - COMMIT_AMOUNT - commitFee
+        );
+
+        // User 2 balance is add the reward minus the commit amount and fees paid
+        assertEq(
+            user2.balance,
+            initialUser2Balance + REWARD - COMMIT_AMOUNT - commitFee
+        );
         console.log(address(luckyBuy).balance);
     }
 
