@@ -12,6 +12,7 @@ interface ISignatureVerifier {
         bytes32 orderHash;
         uint256 amount;
         uint256 reward;
+        address creator;
     }
 
     function hash(
