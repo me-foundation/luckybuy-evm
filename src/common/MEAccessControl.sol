@@ -36,7 +36,6 @@ contract MEAccessControl is AccessControl {
     }
     /// @notice Adds a new operations user
     /// @param user Address to grant operations role to
-
     function addOpsUser(address user) public onlyRole(DEFAULT_ADMIN_ROLE) {
         _grantRole(OPS_ROLE, user);
     }
