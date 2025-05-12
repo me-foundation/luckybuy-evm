@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
  */
 contract MEAccessControl is AccessControl {
     bytes32 public constant OPS_ROLE = keccak256("OPS_ROLE");
+    bytes32 public constant FEE_MANAGER_ROLE = keccak256("FEE_MANAGER_ROLE");
 
     error InvalidOwner();
 
@@ -35,6 +36,7 @@ contract MEAccessControl is AccessControl {
     }
     /// @notice Adds a new operations user
     /// @param user Address to grant operations role to
+
     function addOpsUser(address user) public onlyRole(DEFAULT_ADMIN_ROLE) {
         _grantRole(OPS_ROLE, user);
     }
