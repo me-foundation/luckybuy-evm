@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 import "src/LuckyBuy.sol";
-
+import "src/PRNG.sol";
 import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import {IERC1155MInitializableV1_0_2} from "src/common/interfaces/IERC1155MInitializableV1_0_2.sol";
 contract MockLuckyBuy is LuckyBuy {
@@ -11,8 +11,9 @@ contract MockLuckyBuy is LuckyBuy {
     constructor(
         uint256 protocolFee_,
         uint256 flatFee_,
-        address feeReceiver_
-    ) LuckyBuy(protocolFee_, flatFee_, feeReceiver_) {
+        address feeReceiver_,
+        address prng_
+    ) LuckyBuy(protocolFee_, flatFee_, feeReceiver_, prng_) {
         owner = msg.sender;
     }
 
@@ -65,6 +66,7 @@ contract MockERC1155 is ERC1155, IERC1155MInitializableV1_0_2 {
 }
 
 contract TestLuckyBuyOpenEdition is Test {
+    PRNG prng;
     MockLuckyBuy luckyBuy;
     MockERC1155 openEditionToken;
     address admin = address(0x1);
@@ -87,7 +89,13 @@ contract TestLuckyBuyOpenEdition is Test {
 
     function setUp() public {
         vm.startPrank(admin);
-        luckyBuy = new MockLuckyBuy(protocolFee, flatFee, msg.sender);
+        prng = new PRNG();
+        luckyBuy = new MockLuckyBuy(
+            protocolFee,
+            flatFee,
+            msg.sender,
+            address(prng)
+        );
         vm.deal(admin, 1000000 ether);
         vm.deal(user, 100000 ether);
 

@@ -3,13 +3,14 @@ pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 import "src/LuckyBuy.sol";
-
+import "src/PRNG.sol";
 contract MockLuckyBuy is LuckyBuy {
     constructor(
         uint256 protocolFee_,
         uint256 flatFee_,
-        address feeReceiver_
-    ) LuckyBuy(protocolFee_, flatFee_, feeReceiver_) {}
+        address feeReceiver_,
+        address prng_
+    ) LuckyBuy(protocolFee_, flatFee_, feeReceiver_, prng_) {}
 
     function setIsFulfilled(uint256 commitId_, bool isFulfilled_) public {
         isFulfilled[commitId_] = isFulfilled_;
@@ -33,6 +34,7 @@ contract MockLuckyBuy is LuckyBuy {
 }
 
 contract TestLuckyBuyCommit is Test {
+    PRNG prng;
     MockLuckyBuy luckyBuy;
     address admin = address(0x1);
     address user = address(0x2);
@@ -72,7 +74,8 @@ contract TestLuckyBuyCommit is Test {
 
     function setUp() public {
         vm.startPrank(admin);
-        luckyBuy = new MockLuckyBuy(protocolFee, flatFee, admin);
+        prng = new PRNG();
+        luckyBuy = new MockLuckyBuy(protocolFee, flatFee, admin, address(prng));
         vm.deal(admin, 100 ether);
         vm.deal(receiver, 100 ether);
         vm.deal(address(this), 100 ether);
@@ -623,7 +626,12 @@ contract TestLuckyBuyCommit is Test {
 
         // Deploy LuckyBuy from admin account
         vm.prank(admin);
-        LuckyBuy newLuckyBuy = new LuckyBuy(protocolFee, flatFee, msg.sender);
+        LuckyBuy newLuckyBuy = new LuckyBuy(
+            protocolFee,
+            flatFee,
+            msg.sender,
+            address(prng)
+        );
 
         // Verify the deployment address matches prediction
         assertEq(

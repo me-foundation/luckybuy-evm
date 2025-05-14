@@ -9,15 +9,15 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./common/MEAccessControl.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
-import "./PRNG.sol";
+import {IPRNG} from "./common/interfaces/IPRNG.sol";
 
 contract LuckyBuy is
     MEAccessControl,
     Pausable,
     SignatureVerifier,
-    PRNG,
     ReentrancyGuard
 {
+    IPRNG public PRNG;
     address payable public feeReceiver;
     // We will not track our supply on this contract. We will mint a yuge amount and never run out on the oe.
     address public openEditionToken;
@@ -41,6 +41,7 @@ contract LuckyBuy is
 
     uint256 public constant MIN_COMMIT_EXPIRE_TIME = 1 minutes;
     uint256 public constant ONE_PERCENT = 100;
+    uint256 public constant BASE_POINTS = 10000;
 
     mapping(address cosigner => bool active) public isCosigner;
     mapping(address receiver => uint256 counter) public luckyBuyCount;
@@ -134,7 +135,8 @@ contract LuckyBuy is
     constructor(
         uint256 protocolFee_,
         uint256 flatFee_,
-        address feeReceiver_
+        address feeReceiver_,
+        address prng_
     ) MEAccessControl() SignatureVerifier("LuckyBuy", "1") {
         uint256 existingBalance = address(this).balance;
         if (existingBalance > 0) {
@@ -144,6 +146,7 @@ contract LuckyBuy is
         _setProtocolFee(protocolFee_);
         _setFlatFee(flatFee_);
         _setFeeReceiver(feeReceiver_);
+        PRNG = IPRNG(prng_);
     }
 
     /// @notice Allows a user to commit funds for a chance to win
@@ -292,7 +295,7 @@ contract LuckyBuy is
 
         // calculate the odds in base points
         uint256 odds = _calculateOdds(commitData.amount, commitData.reward);
-        uint256 rng = _rng(signature_);
+        uint256 rng = PRNG.rng(signature_);
         bool win = rng < odds;
 
         if (win) {
@@ -483,7 +486,9 @@ contract LuckyBuy is
 
         uint256 transferAmount = commitAmount + protocolFeesPaid;
 
-        (bool success, ) = payable(commitData.receiver).call{value: transferAmount}("");
+        (bool success, ) = payable(commitData.receiver).call{
+            value: transferAmount
+        }("");
         if (!success) revert TransferFailed();
 
         emit CommitExpired(commitId_, hash(commitData));

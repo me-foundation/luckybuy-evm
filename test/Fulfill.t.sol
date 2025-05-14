@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
+// NOTICE TO DEV: As the contract changes it is possible that the recovered CoSigner address will change. When the PRNG was refactored out, it changed to 0xa664152f4a94F7a34D41Acef0766347Ee43ac752 for example.
+// This is a property of signature recovery. If that happens you have two options:
+// 1. Re-sign the commit data.
+
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 import "forge-std/Test.sol";
 import "src/LuckyBuy.sol";
-
+import "src/PRNG.sol";
 // I grabbed this data from the Magic Eden API. This is a seaport order that is valid as of FORK_BLOCK:
 // curl 'https://api-mainnet.magiceden.us/v3/rtp/ethereum/execute/buy/v7' \
 //   -H 'accept: application/json, text/plain, */*' \
@@ -20,8 +24,9 @@ contract MockLuckyBuy is LuckyBuy {
     constructor(
         uint256 protocolFee_,
         uint256 flatFee_,
-        address feeReceiver_
-    ) LuckyBuy(protocolFee_, flatFee_, feeReceiver_) {}
+        address feeReceiver_,
+        address prng_
+    ) LuckyBuy(protocolFee_, flatFee_, feeReceiver_, prng_) {}
 
     /// @notice Calculates fee amount based on input amount and fee percentage
     /// @param _amount The amount to calculate fee on
@@ -58,10 +63,6 @@ contract MockLuckyBuy is LuckyBuy {
         return ECDSA.recover(digest, signature);
     }
 
-    function rng(bytes calldata signature) public view returns (uint256) {
-        return _rng(signature);
-    }
-
     // Debug balance tracking. Second layer of defense to ensure the balances are correct. Drop this anywhere, any time to audit the contract balance.
     function reconcileBalance() external {
         uint256 actualBalance = address(this).balance;
@@ -72,6 +73,7 @@ contract MockLuckyBuy is LuckyBuy {
     }
 }
 contract FulfillTest is Test {
+    PRNG prng;
     MockLuckyBuy luckyBuy;
     address admin = address(0x1);
 
@@ -143,7 +145,8 @@ contract FulfillTest is Test {
             shouldRunTests = true;
 
             vm.startPrank(admin);
-            luckyBuy = new MockLuckyBuy(0, 0, msg.sender);
+            prng = new PRNG();
+            luckyBuy = new MockLuckyBuy(0, 0, msg.sender, address(prng));
             vm.deal(admin, 100 ether);
             vm.deal(address(this), 100 ether);
             vm.deal(user2, 100 ether);
@@ -318,7 +321,7 @@ contract FulfillTest is Test {
             FUND_AMOUNT + COMMIT_AMOUNT - REWARD
         );
 
-        console.log(luckyBuy.rng(signature));
+        console.log(luckyBuy.PRNG().rng(signature));
     }
 
     function test_end_to_end_success_order_fails() public {
@@ -554,7 +557,7 @@ contract FulfillTest is Test {
         assertEq(address(luckyBuy).balance, balance + FAIL_COMMIT_AMOUNT);
         assertEq(luckyBuy.isFulfilled(0), true);
 
-        console.log(luckyBuy.rng(signature));
+        console.log(luckyBuy.PRNG().rng(signature));
     }
 
     function test_protocol_fee_management() public {
@@ -641,7 +644,7 @@ contract FulfillTest is Test {
             FUND_AMOUNT + (COMMIT_AMOUNT - REWARD) + commitFee
         );
 
-        console.log(luckyBuy.rng(signature));
+        console.log(luckyBuy.PRNG().rng(signature));
     }
 
     function testhashDataView() public {
@@ -921,6 +924,6 @@ contract FulfillTest is Test {
             FUND_AMOUNT + COMMIT_AMOUNT - REWARD
         );
 
-        console.log(luckyBuy.rng(signature));
+        console.log(luckyBuy.PRNG().rng(signature));
     }
 }

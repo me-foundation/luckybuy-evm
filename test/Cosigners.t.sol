@@ -3,9 +3,11 @@ pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 import "src/LuckyBuy.sol";
+import "src/PRNG.sol";
 import "@openzeppelin/contracts/access/IAccessControl.sol";
 
 contract TestLuckyBuyCosigners is Test {
+    PRNG prng;
     LuckyBuy luckyBuy;
     address admin = address(0x1);
     address user = address(0x2);
@@ -20,7 +22,13 @@ contract TestLuckyBuyCosigners is Test {
 
     function setUp() public {
         vm.startPrank(admin);
-        luckyBuy = new LuckyBuy(protocolFee, flatFee, msg.sender);
+        prng = new PRNG();
+        luckyBuy = new LuckyBuy(
+            protocolFee,
+            flatFee,
+            msg.sender,
+            address(prng)
+        );
         vm.stopPrank();
     }
 

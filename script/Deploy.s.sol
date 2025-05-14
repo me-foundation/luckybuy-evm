@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import "forge-std/Script.sol";
 import "../src/LuckyBuy.sol";
+import "../src/PRNG.sol";
 
 import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 
@@ -19,8 +20,17 @@ contract OpenEdition is ERC1155 {
     }
 }
 
+contract DeployPRNG is Script {
+    function run() external {
+        vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
+        PRNG prng = new PRNG();
+        console.log(address(prng));
+        vm.stopBroadcast();
+    }
+}
 contract DeployLuckyBuy is Script {
     address feeReceiver = 0x85d31445AF0b0fF26851bf3C5e27e90058Df3270;
+    address prng = 0xBdAa680FcD544acc373c5f190449575768Ac4822;
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
@@ -28,7 +38,13 @@ contract DeployLuckyBuy is Script {
         uint256 flatFee = 0;
 
         vm.startBroadcast(deployerPrivateKey);
-        LuckyBuy luckyBuy = new LuckyBuy(protocolFee, flatFee, feeReceiver);
+
+        LuckyBuy luckyBuy = new LuckyBuy(
+            protocolFee,
+            flatFee,
+            feeReceiver,
+            address(prng)
+        );
 
         console.log(address(luckyBuy));
 

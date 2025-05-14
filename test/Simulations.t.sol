@@ -3,13 +3,14 @@ pragma solidity 0.8.28;
 
 import "forge-std/Test.sol";
 import "src/LuckyBuy.sol";
-
+import "src/PRNG.sol";
 contract MockLuckyBuy is LuckyBuy {
     constructor(
         uint256 protocolFee_,
         uint256 flatFee_,
-        address feeReceiver_
-    ) LuckyBuy(protocolFee_, flatFee_, feeReceiver_) {}
+        address feeReceiver_,
+        address prng_
+    ) LuckyBuy(protocolFee_, flatFee_, feeReceiver_, prng_) {}
 
     function setIsFulfilled(uint256 commitId_, bool isFulfilled_) public {
         isFulfilled[commitId_] = isFulfilled_;
@@ -34,7 +35,7 @@ contract MockLuckyBuy is LuckyBuy {
 
 contract TestLuckyBuyCommit is Test {
     bool skipTest = true;
-
+    PRNG prng;
     MockLuckyBuy luckyBuy;
     address admin = address(0x1);
     address user = address(0x2);
@@ -57,7 +58,13 @@ contract TestLuckyBuyCommit is Test {
 
     function setUp() public {
         vm.startPrank(admin);
-        luckyBuy = new MockLuckyBuy(protocolFee, flatFee, msg.sender);
+        prng = new PRNG();
+        luckyBuy = new MockLuckyBuy(
+            protocolFee,
+            flatFee,
+            msg.sender,
+            address(prng)
+        );
         vm.deal(admin, 1000000 ether);
         vm.deal(user, 100000 ether);
 
