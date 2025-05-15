@@ -43,11 +43,6 @@ contract LuckyBuy is
     uint256 public constant ONE_PERCENT = 100;
     uint256 public constant BASE_POINTS = 10000;
 
-    // We want to split some of the fees we collect with the creator of the collection.
-    // We will define the split at fulfillment.
-    mapping(address feeSplitReceiver => uint256 feeSplitBalance)
-        public feeSplitBalances;
-
     mapping(address cosigner => bool active) public isCosigner;
     mapping(address receiver => uint256 counter) public luckyBuyCount;
     mapping(uint256 commitId => bool fulfilled) public isFulfilled;
@@ -325,7 +320,14 @@ contract LuckyBuy is
         uint256 protocolFeesPaid = feesPaid[commitId_];
         uint256 splitAmount = (protocolFeesPaid * feeSplitPercentage_) /
             BASE_POINTS;
-        feeSplitBalances[feeSplitReceiver_] += splitAmount;
+
+        (bool success, ) = payable(feeSplitReceiver_).call{value: splitAmount}(
+            ""
+        );
+
+        // This is deliberate. We do not want to block execution and will manually send fees to the receiver.
+        if (!success)
+            emit FeeTransferFailure(commitId_, feeSplitReceiver_, splitAmount);
 
         // Subtract the split amount from the treasury balance
         treasuryBalance -= splitAmount;
@@ -551,15 +553,6 @@ contract LuckyBuy is
                 digest
             );
         }
-    }
-
-    function withdrawCreatorFees() external nonReentrant {
-        uint256 creatorFees = feeSplitBalances[msg.sender];
-        if (creatorFees == 0) revert InsufficientBalance();
-        feeSplitBalances[msg.sender] = 0;
-        (bool success, ) = payable(msg.sender).call{value: creatorFees}("");
-        if (!success) revert WithdrawalFailed();
-        emit CreatorFeesWithdrawn(msg.sender, creatorFees);
     }
 
     /// @notice Allows the admin to withdraw ETH from the contract balance
