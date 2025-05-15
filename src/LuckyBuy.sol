@@ -253,6 +253,17 @@ contract LuckyBuy is
         return commitId;
     }
 
+    /// @notice Fulfills a commit with the result of the random number generation
+    /// @param commitId_ ID of the commit to fulfill
+    /// @param marketplace_ Address where the order should be executed
+    /// @param orderData_ Calldata for the order execution
+    /// @param orderAmount_ Amount of ETH to send with the order
+    /// @param token_ Address of the token being transferred (zero address for ETH)
+    /// @param tokenId_ ID of the token if it's an NFT
+    /// @param signature_ Signature used for random number generation
+    /// @param feeSplitReceiver_ Address of the fee split receiver
+    /// @param feeSplitPercentage_ Percentage of the fee to split relative to the protocol fees paid
+    /// @dev Emits a FeeSplit event on success
     function fulfillWithFeeSplit(
         uint256 commitId_,
         address marketplace_,
