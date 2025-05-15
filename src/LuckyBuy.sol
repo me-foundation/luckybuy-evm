@@ -111,6 +111,12 @@ contract LuckyBuy is
         uint256 totalProtocolFee,
         uint256 splitAmount
     );
+    event FeeTransferFailure(
+        uint256 indexed commitId,
+        address indexed feeSplitReceiver,
+        uint256 amount,
+        bytes32 digest
+    );
 
     error AlreadyCosigner();
     error AlreadyFulfilled();
@@ -327,7 +333,12 @@ contract LuckyBuy is
 
         // This is deliberate. We do not want to block execution and will manually send fees to the receiver.
         if (!success)
-            emit FeeTransferFailure(commitId_, feeSplitReceiver_, splitAmount);
+            emit FeeTransferFailure(
+                commitId_,
+                feeSplitReceiver_,
+                splitAmount,
+                hash(luckyBuys[commitId_])
+            );
 
         // Subtract the split amount from the treasury balance
         treasuryBalance -= splitAmount;
