@@ -45,7 +45,7 @@ contract LuckyBuy is
 
     // We want to split some of the fees we collect with the creator of the collection.
     // We will set the creator address when the commit is created.
-    mapping(address feeSplitReceiver => uint256 balance)
+    mapping(address feeSplitReceiver => uint256 feeSplitBalance)
         public feeSplitBalances;
 
     mapping(address cosigner => bool active) public isCosigner;
