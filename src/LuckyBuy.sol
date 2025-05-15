@@ -274,7 +274,7 @@ contract LuckyBuy is
         bytes calldata signature_,
         address feeSplitReceiver_,
         uint256 feeSplitPercentage_
-    ) external payable nonReentrant whenNotPaused {
+    ) public payable nonReentrant whenNotPaused {
         if (feeSplitReceiver_ == address(0)) revert InvalidFeeSplitReceiver();
         if (feeSplitPercentage_ > BASE_POINTS)
             revert InvalidFeeSplitPercentage();
@@ -336,6 +336,7 @@ contract LuckyBuy is
             signature_
         );
     }
+
     function _fulfill(
         uint256 commitId_,
         address marketplace_,
@@ -455,6 +456,40 @@ contract LuckyBuy is
                 token_,
                 tokenId_,
                 signature_
+            );
+    }
+
+    /// @notice Fulfills a commit with the result of the random number generation
+    /// @param commitDigest_ Digest of the commit to fulfill
+    /// @param marketplace_ Address where the order should be executed
+    /// @param orderData_ Calldata for the order execution
+    /// @param orderAmount_ Amount of ETH to send with the order
+    /// @param token_ Address of the token being transferred (zero address for ETH)
+    /// @param tokenId_ ID of the token if it's an NFT
+    /// @param signature_ Signature used for random number generation
+    /// @dev Emits a Fulfillment event on success
+    function fulfillByDigestWithFeeSplit(
+        bytes32 commitDigest_,
+        address marketplace_,
+        bytes calldata orderData_,
+        uint256 orderAmount_,
+        address token_,
+        uint256 tokenId_,
+        bytes calldata signature_,
+        address feeSplitReceiver_,
+        uint256 feeSplitPercentage_
+    ) public payable whenNotPaused {
+        return
+            fulfillWithFeeSplit(
+                commitIdByDigest[commitDigest_],
+                marketplace_,
+                orderData_,
+                orderAmount_,
+                token_,
+                tokenId_,
+                signature_,
+                feeSplitReceiver_,
+                feeSplitPercentage_
             );
     }
 
