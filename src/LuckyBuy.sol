@@ -332,16 +332,17 @@ contract LuckyBuy is
         );
 
         // This is deliberate. We do not want to block execution and will manually send fees to the receiver.
-        if (!success)
+        if (!success) {
             emit FeeTransferFailure(
                 commitId_,
                 feeSplitReceiver_,
                 splitAmount,
                 hash(luckyBuys[commitId_])
             );
-
-        // Subtract the split amount from the treasury balance
-        treasuryBalance -= splitAmount;
+        } else {
+            // Subtract the split amount from the treasury balance
+            treasuryBalance -= splitAmount;
+        }
 
         emit FeeSplit(
             commitId_,

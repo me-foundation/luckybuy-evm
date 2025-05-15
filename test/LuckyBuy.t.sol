@@ -50,6 +50,13 @@ contract TestLuckyBuyCommit is Test {
     uint256 amount = 1 ether;
     uint256 reward = 10 ether; // 10% odds
 
+    // Add missing variables for fee split tests
+    address marketplace = address(0);
+    bytes orderData = hex"00";
+    uint256 orderAmount = 1 ether;
+    address orderToken = address(0);
+    uint256 orderTokenId = 0;
+
     event Commit(
         address indexed sender,
         uint256 indexed commitId,
@@ -1312,6 +1319,209 @@ contract TestLuckyBuyCommit is Test {
         uint256 finalBalance = address(this).balance;
 
         assertEq(finalBalance, initialBalance + 10 ether);
+    }
+
+    function testFeeSplitSuccess() public {
+        address collectionCreator = address(0x1);
+        uint256 creatorFeeSplitPercentage = 5000; // 50%
+        vm.startPrank(admin);
+
+        luckyBuy.setProtocolFee(1000); // 10%
+        luckyBuy.setFlatFee(0);
+        luckyBuy.setFeeReceiver(address(this));
+
+        (bool success, ) = address(luckyBuy).call{value: 10 ether}("");
+        assertTrue(success, "Initial funding should succeed");
+
+        uint256 commitAmount = 0.01 ether;
+        uint256 rewardAmount = 1 ether;
+        uint256 protocolFee = luckyBuy.calculateProtocolFee(commitAmount);
+        // Create order hash for a simple ETH transfer - this stays the same for all plays
+        bytes32 orderHash = luckyBuy.hashOrder(
+            address(0), // to address(0)
+            rewardAmount, // amount 1 ether (reward amount)
+            "", // no data
+            address(0), // no token
+            0 // no token id
+        );
+        vm.stopPrank();
+        vm.deal(user, 100 ether);
+
+        vm.startPrank(user);
+
+        // Create commit
+        uint256 commitId = luckyBuy.commit{value: commitAmount + protocolFee}(
+            user, // receiver
+            cosigner, // cosigner
+            seed, // random seed
+            orderHash, // order hash we just created
+            rewardAmount // reward amount (10x the commit for 10% odds)
+        );
+        vm.stopPrank();
+
+        (
+            uint256 _id,
+            address _receiver,
+            address _cosigner,
+            uint256 _seed,
+            uint256 _counter,
+            bytes32 _orderHash,
+            uint256 _amount,
+            uint256 _reward
+        ) = luckyBuy.luckyBuys(commitId);
+
+        // Get the counter for this commit
+        uint256 counter = 0;
+
+        // Sign the commit
+        bytes memory signature = signCommit(
+            commitId,
+            user,
+            seed,
+            counter,
+            orderHash,
+            commitAmount,
+            rewardAmount
+        );
+
+        assertEq(luckyBuy.protocolBalance(), protocolFee);
+
+        uint256 treasuryBalance = luckyBuy.treasuryBalance();
+        // Fulfill the commit
+        vm.startPrank(user);
+
+        uint256 _collectionCreatorBalance = collectionCreator.balance;
+        uint256 _treasuryBalance = luckyBuy.treasuryBalance();
+        uint256 _protocolBalance = luckyBuy.protocolBalance();
+        luckyBuy.fulfillWithFeeSplit(
+            commitId,
+            address(0), // marketplace
+            "", // orderData
+            rewardAmount, // orderAmount
+            address(0), // token
+            0, // tokenId
+            signature,
+            collectionCreator,
+            creatorFeeSplitPercentage
+        );
+        vm.stopPrank();
+
+        assertEq(
+            collectionCreator.balance,
+            _collectionCreatorBalance +
+                (creatorFeeSplitPercentage * protocolFee) /
+                10000
+        );
+
+        assertEq(luckyBuy.protocolBalance(), _protocolBalance - protocolFee);
+        assertEq(
+            luckyBuy.treasuryBalance(),
+            _treasuryBalance +
+                commitAmount +
+                (creatorFeeSplitPercentage * protocolFee) /
+                10000
+        );
+        assertEq(luckyBuy.commitBalance(), 0);
+    }
+
+    function testFeeSplitInvalidPercentage() public {
+        // Setup
+        uint256 protocolFee = 100; // 1%
+        uint256 commitAmount = 1 ether;
+        uint256 invalidFeeSplitPercentage = luckyBuy.BASE_POINTS() + 1; // Over 100%
+        address feeSplitReceiver = address(0x9);
+
+        vm.startPrank(admin);
+        luckyBuy.setProtocolFee(protocolFee);
+        vm.stopPrank();
+
+        // Fund contract
+        vm.deal(address(luckyBuy), 10 ether);
+
+        // Create commit
+        vm.startPrank(user);
+        vm.deal(user, commitAmount);
+        uint256 commitId = luckyBuy.commit{value: commitAmount}(
+            receiver,
+            cosigner,
+            seed,
+            orderHash,
+            reward
+        );
+        vm.stopPrank();
+
+        // Fulfill with invalid fee split percentage
+        bytes memory signature = signCommit(
+            commitId,
+            receiver,
+            seed,
+            0,
+            orderHash,
+            commitAmount,
+            reward
+        );
+        vm.expectRevert(LuckyBuy.InvalidFeeSplitPercentage.selector);
+        luckyBuy.fulfillWithFeeSplit(
+            commitId,
+            marketplace,
+            orderData,
+            orderAmount,
+            orderToken,
+            orderTokenId,
+            signature,
+            feeSplitReceiver,
+            invalidFeeSplitPercentage
+        );
+    }
+
+    function testFeeSplitInvalidReceiver() public {
+        // Setup
+        uint256 protocolFee = 100; // 1%
+        uint256 commitAmount = 1 ether;
+        uint256 feeSplitPercentage = 5000; // 50%
+        address invalidFeeSplitReceiver = address(0); // Zero address
+
+        vm.startPrank(admin);
+        luckyBuy.setProtocolFee(protocolFee);
+        vm.stopPrank();
+
+        // Fund contract
+        vm.deal(address(luckyBuy), 10 ether);
+
+        // Create commit
+        vm.startPrank(user);
+        vm.deal(user, commitAmount);
+        uint256 commitId = luckyBuy.commit{value: commitAmount}(
+            receiver,
+            cosigner,
+            seed,
+            orderHash,
+            reward
+        );
+        vm.stopPrank();
+
+        // Fulfill with invalid fee split receiver
+        bytes memory signature = signCommit(
+            commitId,
+            receiver,
+            seed,
+            0,
+            orderHash,
+            commitAmount,
+            reward
+        );
+        vm.expectRevert(LuckyBuy.InvalidFeeSplitReceiver.selector);
+        luckyBuy.fulfillWithFeeSplit(
+            commitId,
+            marketplace,
+            orderData,
+            orderAmount,
+            orderToken,
+            orderTokenId,
+            signature,
+            invalidFeeSplitReceiver,
+            feeSplitPercentage
+        );
     }
 
     function signCommit(
