@@ -305,6 +305,8 @@ contract LuckyBuy is
         uint256 feeSplitPercentage_
     ) public payable nonReentrant whenNotPaused {
         if (feeSplitReceiver_ == address(0)) revert InvalidFeeSplitReceiver();
+        if (feeSplitReceiver_ == address(this))
+            revert InvalidFeeSplitReceiver();
         if (feeSplitPercentage_ > BASE_POINTS)
             revert InvalidFeeSplitPercentage();
 
