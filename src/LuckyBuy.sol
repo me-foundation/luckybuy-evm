@@ -43,6 +43,15 @@ contract LuckyBuy is
     uint256 public constant ONE_PERCENT = 100;
     uint256 public constant BASE_POINTS = 10000;
 
+    // We want to split some of the fees we collect with the creator of the collection.
+    // We will set the creator address when the commit is created.
+    mapping(uint256 commitId => address feeSplitReceiver)
+        public feeSplitReceivers;
+    mapping(uint256 commitId => uint256 feeSplitPercentage)
+        public feeSplitPercentages;
+    mapping(address feeSplitReceiver => uint256 balance)
+        public feeSplitBalances;
+
     mapping(address cosigner => bool active) public isCosigner;
     mapping(address receiver => uint256 counter) public luckyBuyCount;
     mapping(uint256 commitId => bool fulfilled) public isFulfilled;
@@ -122,6 +131,9 @@ contract LuckyBuy is
     error CommitNotExpired();
     error TransferFailed();
     error InvalidFeeReceiver();
+    error InvalidFeeSplitReceiver();
+    error InvalidFeeSplitPercentage();
+
     modifier onlyCommitOwnerOrCosigner(uint256 commitId_) {
         if (
             luckyBuys[commitId_].receiver != msg.sender &&
@@ -149,6 +161,31 @@ contract LuckyBuy is
         PRNG = IPRNG(prng_);
     }
 
+    function commitWithFeeSplit(
+        address receiver_,
+        address cosigner_,
+        uint256 seed_,
+        bytes32 orderHash_,
+        uint256 reward_,
+        address feeSplitReceiver_,
+        uint256 feeSplitPercentage_
+    ) external payable whenNotPaused returns (uint256) {
+        if (feeSplitReceiver_ == address(0)) revert InvalidFeeSplitReceiver();
+        if (feeSplitPercentage_ > BASE_POINTS)
+            revert InvalidFeeSplitPercentage();
+
+        uint256 commitId = commit(
+            receiver_,
+            cosigner_,
+            seed_,
+            orderHash_,
+            reward_
+        );
+        feeSplitReceivers[commitId] = feeSplitReceiver_;
+        feeSplitPercentages[commitId] = feeSplitPercentage_;
+        return commitId;
+    }
+
     /// @notice Allows a user to commit funds for a chance to win
     /// @param receiver_ Address that will receive the NFT/ETH if won
     /// @param cosigner_ Address of the authorized cosigner
@@ -163,7 +200,7 @@ contract LuckyBuy is
         uint256 seed_,
         bytes32 orderHash_,
         uint256 reward_
-    ) external payable whenNotPaused returns (uint256) {
+    ) public payable whenNotPaused returns (uint256) {
         if (msg.value == 0) revert InvalidAmount();
         if (!isCosigner[cosigner_]) revert InvalidCosigner();
         if (cosigner_ == address(0)) revert InvalidCosigner();
@@ -290,8 +327,26 @@ contract LuckyBuy is
 
         // transfer the protocol fees to the contract
         uint256 protocolFeesPaid = feesPaid[commitData.id];
-        treasuryBalance += protocolFeesPaid;
-        protocolBalance -= protocolFeesPaid;
+
+        // split the protocol fees
+        if (feeSplitReceivers[commitData.id] != address(0)) {
+            // calculate the fee split amount
+            uint256 feeSplitAmount = (protocolFeesPaid *
+                feeSplitPercentages[commitData.id]) / BASE_POINTS;
+
+            // add the fee split amount to the fee split balance
+            feeSplitBalances[
+                feeSplitReceivers[commitData.id]
+            ] += feeSplitAmount;
+
+            // add the protocol fees to the treasury balance
+            treasuryBalance += protocolFeesPaid - feeSplitAmount;
+            // subtract the protocol fees from the protocol balance
+            protocolBalance -= protocolFeesPaid;
+        } else {
+            treasuryBalance += protocolFeesPaid;
+            protocolBalance -= protocolFeesPaid;
+        }
 
         // calculate the odds in base points
         uint256 odds = _calculateOdds(commitData.amount, commitData.reward);
@@ -449,11 +504,14 @@ contract LuckyBuy is
         nonReentrant
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
+        // As of the creator fee split changes, we need to leave the creator fee split balances in the contract
+        uint256 currentBalance = treasuryBalance +
+            commitBalance +
+            protocolBalance;
         treasuryBalance = 0;
         commitBalance = 0;
         protocolBalance = 0;
 
-        uint256 currentBalance = address(this).balance;
         (bool success, ) = payable(feeReceiver).call{value: currentBalance}("");
         if (!success) revert WithdrawalFailed();
 

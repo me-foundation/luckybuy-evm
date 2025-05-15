@@ -39,7 +39,9 @@ contract TestLuckyBuyCommit is Test {
     address admin = address(0x1);
     address user = address(0x2);
     address receiver = address(0x3);
-    address cosigner = address(0x4);
+    uint256 constant COSIGNER_PRIVATE_KEY = 1234;
+    address cosigner = vm.addr(COSIGNER_PRIVATE_KEY);
+
     uint256 protocolFee = 0;
     uint256 flatFee = 0;
 
@@ -1310,6 +1312,113 @@ contract TestLuckyBuyCommit is Test {
         uint256 finalBalance = address(this).balance;
 
         assertEq(finalBalance, initialBalance + 10 ether);
+    }
+
+    function testCreatorFeeSplit() public {
+        address collectionCreator = address(0x1);
+        vm.prank(admin);
+
+        (bool success, ) = address(luckyBuy).call{value: 10 ether}("");
+        assertTrue(success, "Initial funding should succeed");
+
+        uint256 commitAmount = 0.01 ether;
+        uint256 rewardAmount = 1 ether;
+        // Create order hash for a simple ETH transfer - this stays the same for all plays
+        bytes32 orderHash = luckyBuy.hashOrder(
+            address(0), // to address(0)
+            rewardAmount, // amount 1 ether (reward amount)
+            "", // no data
+            address(0), // no token
+            0 // no token id
+        );
+
+        vm.deal(user, 100 ether);
+
+        vm.startPrank(user);
+
+        // Create commit
+        uint256 commitId = luckyBuy.commitWithFeeSplit{value: commitAmount}(
+            user, // receiver
+            cosigner, // cosigner
+            seed, // random seed
+            orderHash, // order hash we just created
+            rewardAmount, // reward amount (10x the commit for 10% odds)
+            collectionCreator, // fee split receiver
+            0 // fee split percentage (500 in base points = 5%)
+        );
+        vm.stopPrank();
+
+        (
+            uint256 _id,
+            address _receiver,
+            address _cosigner,
+            uint256 _seed,
+            uint256 _counter,
+            bytes32 _orderHash,
+            uint256 _amount,
+            uint256 _reward
+        ) = luckyBuy.luckyBuys(commitId);
+
+        // Get the counter for this commit
+        uint256 counter = 0;
+
+        // Sign the commit
+        bytes memory signature = signCommit(
+            commitId,
+            user,
+            seed,
+            counter,
+            orderHash,
+            commitAmount,
+            rewardAmount
+        );
+
+        // Fulfill the commit
+        vm.startPrank(user);
+        luckyBuy.fulfill(
+            commitId,
+            address(0), // marketplace
+            "", // orderData
+            rewardAmount, // orderAmount
+            address(0), // token
+            0, // tokenId
+            signature
+        );
+        vm.stopPrank();
+
+        assertEq(luckyBuy.feeSplitBalances(collectionCreator), 0 ether);
+    }
+
+    function signCommit(
+        uint256 commitId,
+        address receiver,
+        uint256 seed,
+        uint256 counter,
+        bytes32 orderHash,
+        uint256 amount,
+        uint256 reward
+    ) public returns (bytes memory) {
+        // Create the commit data struct
+        ISignatureVerifier.CommitData memory commitData = ISignatureVerifier
+            .CommitData({
+                id: commitId,
+                receiver: receiver,
+                cosigner: cosigner,
+                seed: seed,
+                counter: counter,
+                orderHash: orderHash,
+                amount: amount,
+                reward: reward
+            });
+
+        // Get the digest using the LuckyBuy contract's hash function
+        bytes32 digest = luckyBuy.hash(commitData);
+
+        // Sign the digest with the cosigner's private key
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(COSIGNER_PRIVATE_KEY, digest);
+
+        // Return the signature
+        return abi.encodePacked(r, s, v);
     }
 
     receive() external payable {}

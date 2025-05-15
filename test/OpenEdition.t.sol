@@ -149,7 +149,6 @@ contract TestLuckyBuyOpenEdition is Test {
 
     function testOpenEdition() public {
         // out of base points
-
         vm.prank(admin);
 
         uint256 commitAmount = 0.01 ether;
