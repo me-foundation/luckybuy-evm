@@ -1316,13 +1316,18 @@ contract TestLuckyBuyCommit is Test {
 
     function testCreatorFeeSplit() public {
         address collectionCreator = address(0x1);
-        vm.prank(admin);
+        vm.startPrank(admin);
+
+        luckyBuy.setProtocolFee(1000);
+        luckyBuy.setFlatFee(0);
+        luckyBuy.setFeeReceiver(address(this));
 
         (bool success, ) = address(luckyBuy).call{value: 10 ether}("");
         assertTrue(success, "Initial funding should succeed");
 
         uint256 commitAmount = 0.01 ether;
         uint256 rewardAmount = 1 ether;
+        uint256 protocolFee = luckyBuy.calculateProtocolFee(commitAmount);
         // Create order hash for a simple ETH transfer - this stays the same for all plays
         bytes32 orderHash = luckyBuy.hashOrder(
             address(0), // to address(0)
@@ -1331,13 +1336,15 @@ contract TestLuckyBuyCommit is Test {
             address(0), // no token
             0 // no token id
         );
-
+        vm.stopPrank();
         vm.deal(user, 100 ether);
 
         vm.startPrank(user);
 
         // Create commit
-        uint256 commitId = luckyBuy.commitWithFeeSplit{value: commitAmount}(
+        uint256 commitId = luckyBuy.commitWithFeeSplit{
+            value: commitAmount + protocolFee
+        }(
             user, // receiver
             cosigner, // cosigner
             seed, // random seed
