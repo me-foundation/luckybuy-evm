@@ -45,10 +45,6 @@ contract LuckyBuy is
 
     // We want to split some of the fees we collect with the creator of the collection.
     // We will set the creator address when the commit is created.
-    mapping(uint256 commitId => address feeSplitReceiver)
-        public feeSplitReceivers;
-    mapping(uint256 commitId => uint256 feeSplitPercentage)
-        public feeSplitPercentages;
     mapping(address feeSplitReceiver => uint256 balance)
         public feeSplitBalances;
 
@@ -113,6 +109,13 @@ contract LuckyBuy is
         address indexed newOwner
     );
     event CreatorFeesWithdrawn(address indexed creator, uint256 amount);
+    event FeeSplit(
+        uint256 indexed commitId,
+        address indexed feeSplitReceiver,
+        uint256 feeSplitPercentage,
+        uint256 totalProtocolFee,
+        uint256 splitAmount
+    );
 
     error AlreadyCosigner();
     error AlreadyFulfilled();
@@ -160,31 +163,6 @@ contract LuckyBuy is
         _setFlatFee(flatFee_);
         _setFeeReceiver(feeReceiver_);
         PRNG = IPRNG(prng_);
-    }
-
-    function commitWithFeeSplit(
-        address receiver_,
-        address cosigner_,
-        uint256 seed_,
-        bytes32 orderHash_,
-        uint256 reward_,
-        address feeSplitReceiver_,
-        uint256 feeSplitPercentage_
-    ) external payable whenNotPaused returns (uint256) {
-        if (feeSplitReceiver_ == address(0)) revert InvalidFeeSplitReceiver();
-        if (feeSplitPercentage_ > BASE_POINTS)
-            revert InvalidFeeSplitPercentage();
-
-        uint256 commitId = commit(
-            receiver_,
-            cosigner_,
-            seed_,
-            orderHash_,
-            reward_
-        );
-        feeSplitReceivers[commitId] = feeSplitReceiver_;
-        feeSplitPercentages[commitId] = feeSplitPercentage_;
-        return commitId;
     }
 
     /// @notice Allows a user to commit funds for a chance to win
@@ -275,6 +253,50 @@ contract LuckyBuy is
         return commitId;
     }
 
+    function fulfillWithFeeSplit(
+        uint256 commitId_,
+        address marketplace_,
+        bytes calldata orderData_,
+        uint256 orderAmount_,
+        address token_,
+        uint256 tokenId_,
+        bytes calldata signature_,
+        address feeSplitReceiver_,
+        uint256 feeSplitPercentage_
+    ) external payable nonReentrant whenNotPaused {
+        if (feeSplitReceiver_ == address(0)) revert InvalidFeeSplitReceiver();
+        if (feeSplitPercentage_ > BASE_POINTS)
+            revert InvalidFeeSplitPercentage();
+
+        // Call fulfill as-is
+        _fulfill(
+            commitId_,
+            marketplace_,
+            orderData_,
+            orderAmount_,
+            token_,
+            tokenId_,
+            signature_
+        );
+
+        // All accounting is done in the fulfill function We will fetch to protocol fees that were transferred to the treasury and transfer the split amount from our treasury balance
+        uint256 protocolFeesPaid = feesPaid[commitId_];
+        uint256 splitAmount = (protocolFeesPaid * feeSplitPercentage_) /
+            BASE_POINTS;
+        feeSplitBalances[feeSplitReceiver_] += splitAmount;
+
+        // Subtract the split amount from the treasury balance
+        treasuryBalance -= splitAmount;
+
+        emit FeeSplit(
+            commitId_,
+            feeSplitReceiver_,
+            feeSplitPercentage_,
+            protocolFeesPaid,
+            splitAmount
+        );
+    }
+
     /// @notice Fulfills a commit with the result of the random number generation
     /// @param commitId_ ID of the commit to fulfill
     /// @param marketplace_ Address where the order should be executed
@@ -293,6 +315,25 @@ contract LuckyBuy is
         uint256 tokenId_,
         bytes calldata signature_
     ) public payable nonReentrant whenNotPaused {
+        _fulfill(
+            commitId_,
+            marketplace_,
+            orderData_,
+            orderAmount_,
+            token_,
+            tokenId_,
+            signature_
+        );
+    }
+    function _fulfill(
+        uint256 commitId_,
+        address marketplace_,
+        bytes calldata orderData_,
+        uint256 orderAmount_,
+        address token_,
+        uint256 tokenId_,
+        bytes calldata signature_
+    ) internal {
         // validate tx
         if (msg.value > 0) _depositTreasury(msg.value);
         if (orderAmount_ > treasuryBalance) revert InsufficientBalance();
@@ -329,25 +370,8 @@ contract LuckyBuy is
         // transfer the protocol fees to the contract
         uint256 protocolFeesPaid = feesPaid[commitData.id];
 
-        // split the protocol fees
-        if (feeSplitReceivers[commitData.id] != address(0)) {
-            // calculate the fee split amount
-            uint256 feeSplitAmount = (protocolFeesPaid *
-                feeSplitPercentages[commitData.id]) / BASE_POINTS;
-
-            // add the fee split amount to the fee split balance
-            feeSplitBalances[
-                feeSplitReceivers[commitData.id]
-            ] += feeSplitAmount;
-
-            // add the protocol fees to the treasury balance
-            treasuryBalance += protocolFeesPaid - feeSplitAmount;
-            // subtract the protocol fees from the protocol balance
-            protocolBalance -= protocolFeesPaid;
-        } else {
-            treasuryBalance += protocolFeesPaid;
-            protocolBalance -= protocolFeesPaid;
-        }
+        treasuryBalance += protocolFeesPaid;
+        protocolBalance -= protocolFeesPaid;
 
         // calculate the odds in base points
         uint256 odds = _calculateOdds(commitData.amount, commitData.reward);
