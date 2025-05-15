@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-// NOTICE TO DEV: As the contract changes it is possible that the recovered CoSigner address will change. When the PRNG was refactored out, it changed to 0xa664152f4a94F7a34D41Acef0766347Ee43ac752 for example.
-// This is a property of signature recovery. If that happens you have two options:
-// 1. Re-sign the commit data.
+// NOTICE TO DEV: The PRNG has been refactored out of the contract. This is a property of signature recovery. 712 domains are calculated from the contract bytecode. The below tests use data from the old contract bytecode.
+// The signature recovery address that is recovered from the data is now a different address. To make them work they need to be re-created using the cosigner-lib.
+// These are those tests:
+// test_end_to_end_success
+// test_end_to_end_success_order_fails
+// test_fulfill_by_digest
+// test_protocol_fee_management
 
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
