@@ -1316,9 +1316,10 @@ contract TestLuckyBuyCommit is Test {
 
     function testCreatorFeeSplit() public {
         address collectionCreator = address(0x1);
+        uint256 creatorFeeSplitPercentage = 5000; // 50%
         vm.startPrank(admin);
 
-        luckyBuy.setProtocolFee(1000);
+        luckyBuy.setProtocolFee(1000); // 10%
         luckyBuy.setFlatFee(0);
         luckyBuy.setFeeReceiver(address(this));
 
@@ -1351,7 +1352,7 @@ contract TestLuckyBuyCommit is Test {
             orderHash, // order hash we just created
             rewardAmount, // reward amount (10x the commit for 10% odds)
             collectionCreator, // fee split receiver
-            0 // fee split percentage (500 in base points = 5%)
+            creatorFeeSplitPercentage // fee split percentage (5000 in base points = 50%)
         );
         vm.stopPrank();
 
@@ -1380,6 +1381,9 @@ contract TestLuckyBuyCommit is Test {
             rewardAmount
         );
 
+        assertEq(luckyBuy.protocolBalance(), protocolFee);
+
+        uint256 treasuryBalance = luckyBuy.treasuryBalance();
         // Fulfill the commit
         vm.startPrank(user);
         luckyBuy.fulfill(
@@ -1393,7 +1397,18 @@ contract TestLuckyBuyCommit is Test {
         );
         vm.stopPrank();
 
-        assertEq(luckyBuy.feeSplitBalances(collectionCreator), 0 ether);
+        assertEq(
+            luckyBuy.feeSplitBalances(collectionCreator),
+            (creatorFeeSplitPercentage * protocolFee) / 10000
+        );
+
+        assertEq(
+            luckyBuy.treasuryBalance(),
+            treasuryBalance +
+                commitAmount +
+                (creatorFeeSplitPercentage * protocolFee) /
+                10000
+        );
     }
 
     function signCommit(
