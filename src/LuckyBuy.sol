@@ -591,12 +591,12 @@ contract LuckyBuy is
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         // As of the creator fee split changes, we need to leave the creator fee split balances in the contract
-        uint256 currentBalance = treasuryBalance +
-            commitBalance +
-            protocolBalance;
+
         treasuryBalance = 0;
         commitBalance = 0;
         protocolBalance = 0;
+
+        uint256 currentBalance = address(this).balance;
 
         (bool success, ) = payable(feeReceiver).call{value: currentBalance}("");
         if (!success) revert WithdrawalFailed();
