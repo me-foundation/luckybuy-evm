@@ -1409,6 +1409,603 @@ contract TestLuckyBuyCommit is Test {
                 (creatorFeeSplitPercentage * protocolFee) /
                 10000
         );
+
+        uint256 collectionCreatorStartingBalance = collectionCreator.balance;
+        vm.startPrank(collectionCreator);
+        luckyBuy.withdrawCreatorFees();
+
+        vm.expectRevert(LuckyBuy.InsufficientBalance.selector);
+        luckyBuy.withdrawCreatorFees();
+        vm.stopPrank();
+
+        assertEq(luckyBuy.feeSplitBalances(collectionCreator), 0);
+        assertEq(
+            collectionCreator.balance,
+            collectionCreatorStartingBalance +
+                (creatorFeeSplitPercentage * protocolFee) /
+                10000
+        );
+    }
+
+    function testCreatorFeeSplitZeroPercent() public {
+        address collectionCreator = address(0x1);
+        uint256 creatorFeeSplitPercentage = 0; // 0%
+        vm.startPrank(admin);
+        luckyBuy.setProtocolFee(1000); // 10%
+        luckyBuy.setFlatFee(0);
+        luckyBuy.setFeeReceiver(address(this));
+        vm.stopPrank();
+        vm.deal(user, 100 ether);
+        vm.startPrank(user);
+        uint256 commitAmount = 0.01 ether;
+        uint256 rewardAmount = 1 ether;
+        uint256 protocolFee = luckyBuy.calculateProtocolFee(commitAmount);
+        luckyBuy.commitWithFeeSplit{value: commitAmount + protocolFee}(
+            user,
+            cosigner,
+            seed,
+            orderHash,
+            rewardAmount,
+            collectionCreator,
+            creatorFeeSplitPercentage
+        );
+        vm.stopPrank();
+    }
+
+    function testCreatorFeeSplitHundredPercent() public {
+        address collectionCreator = address(0x1);
+        uint256 creatorFeeSplitPercentage = luckyBuy.BASE_POINTS(); // 100%
+        vm.startPrank(admin);
+        luckyBuy.setProtocolFee(1000); // 10%
+        luckyBuy.setFlatFee(0);
+        luckyBuy.setFeeReceiver(address(this));
+        vm.stopPrank();
+        vm.deal(user, 100 ether);
+        vm.startPrank(user);
+        uint256 commitAmount = 0.01 ether;
+        uint256 rewardAmount = 1 ether;
+        uint256 protocolFee = luckyBuy.calculateProtocolFee(commitAmount);
+        luckyBuy.commitWithFeeSplit{value: commitAmount + protocolFee}(
+            user,
+            cosigner,
+            seed,
+            orderHash,
+            rewardAmount,
+            collectionCreator,
+            creatorFeeSplitPercentage
+        );
+        vm.stopPrank();
+    }
+
+    function testCreatorFeeSplitAccumulation() public {
+        address collectionCreator = address(0x1);
+        uint256 creatorFeeSplitPercentage = 5000; // 50%
+        vm.startPrank(admin);
+
+        luckyBuy.setProtocolFee(1000); // 10%
+        luckyBuy.setFlatFee(0);
+        luckyBuy.setFeeReceiver(address(this));
+
+        (bool success, ) = address(luckyBuy).call{value: 10 ether}("");
+        assertTrue(success, "Initial funding should succeed");
+
+        // Different amounts for each commit
+        uint256[] memory commitAmounts = new uint256[](3);
+        commitAmounts[0] = 0.01 ether; // 0.01 ETH
+        commitAmounts[1] = 0.05 ether; // 0.05 ETH
+        commitAmounts[2] = 0.1 ether; // 0.1 ETH
+
+        uint256 rewardAmount = 1 ether;
+        // Create order hash for a simple ETH transfer - this stays the same for all plays
+        bytes32 orderHash = luckyBuy.hashOrder(
+            address(0), // to address(0)
+            rewardAmount, // amount 1 ether (reward amount)
+            "", // no data
+            address(0), // no token
+            0 // no token id
+        );
+        vm.stopPrank();
+        vm.deal(user, 100 ether);
+
+        uint256 totalExpectedFees = 0;
+
+        // Perform 3 commits and fulfills with different amounts
+        for (uint256 i = 0; i < 3; i++) {
+            vm.startPrank(user);
+            uint256 protocolFee = luckyBuy.calculateProtocolFee(
+                commitAmounts[i]
+            );
+            uint256 expectedCreatorFee = (creatorFeeSplitPercentage *
+                protocolFee) / 10000;
+            uint256 initialCreatorBalance = luckyBuy.feeSplitBalances(
+                collectionCreator
+            );
+
+            // Create commit
+            uint256 commitId = luckyBuy.commitWithFeeSplit{
+                value: commitAmounts[i] + protocolFee
+            }(
+                user, // receiver
+                cosigner, // cosigner
+                seed + i, // increment seed for each commit
+                orderHash, // order hash
+                rewardAmount, // reward amount
+                collectionCreator, // fee split receiver
+                creatorFeeSplitPercentage // fee split percentage
+            );
+
+            // Get the counter for this commit
+            uint256 counter = i;
+
+            // Sign the commit
+            bytes memory signature = signCommit(
+                commitId,
+                user,
+                seed + i,
+                counter,
+                orderHash,
+                commitAmounts[i],
+                rewardAmount
+            );
+
+            // Fulfill the commit
+            luckyBuy.fulfill(
+                commitId,
+                address(0), // marketplace
+                "", // orderData
+                rewardAmount, // orderAmount
+                address(0), // token
+                0, // tokenId
+                signature
+            );
+            vm.stopPrank();
+
+            // Verify creator's balance increased by the expected amount
+            uint256 newCreatorBalance = luckyBuy.feeSplitBalances(
+                collectionCreator
+            );
+            assertEq(
+                newCreatorBalance,
+                initialCreatorBalance + expectedCreatorFee,
+                "Creator balance should increase by correct fee amount"
+            );
+
+            totalExpectedFees += expectedCreatorFee;
+        }
+
+        // Final verification of total accumulated fees
+        assertEq(
+            luckyBuy.feeSplitBalances(collectionCreator),
+            totalExpectedFees,
+            "Total accumulated fees should match expected amount"
+        );
+    }
+
+    function testMultipleFeeSplitsSameCreator() public {
+        address collectionCreator = address(0x1);
+        uint256[] memory creatorFeeSplitPercentages = new uint256[](3);
+        creatorFeeSplitPercentages[0] = 3000; // 30%
+        creatorFeeSplitPercentages[1] = 5000; // 50%
+        creatorFeeSplitPercentages[2] = 7000; // 70%
+
+        vm.startPrank(admin);
+        luckyBuy.setProtocolFee(1000); // 10%
+        luckyBuy.setFlatFee(0);
+        luckyBuy.setFeeReceiver(address(this));
+        (bool success, ) = address(luckyBuy).call{value: 10 ether}("");
+        assertTrue(success, "Initial funding should succeed");
+        vm.stopPrank();
+
+        vm.deal(user, 100 ether);
+        vm.startPrank(user);
+
+        uint256[] memory commitAmounts = new uint256[](3);
+        commitAmounts[0] = 0.01 ether;
+        commitAmounts[1] = 0.05 ether;
+        commitAmounts[2] = 0.1 ether;
+
+        uint256 rewardAmount = 1 ether;
+        bytes32 orderHash = luckyBuy.hashOrder(
+            address(0),
+            rewardAmount,
+            "",
+            address(0),
+            0
+        );
+
+        uint256 totalExpectedFees = 0;
+
+        for (uint256 i = 0; i < 3; i++) {
+            uint256 protocolFee = luckyBuy.calculateProtocolFee(
+                commitAmounts[i]
+            );
+            uint256 expectedCreatorFee = (creatorFeeSplitPercentages[i] *
+                protocolFee) / 10000;
+            uint256 initialCreatorBalance = luckyBuy.feeSplitBalances(
+                collectionCreator
+            );
+
+            uint256 commitId = luckyBuy.commitWithFeeSplit{
+                value: commitAmounts[i] + protocolFee
+            }(
+                user,
+                cosigner,
+                seed + i,
+                orderHash,
+                rewardAmount,
+                collectionCreator,
+                creatorFeeSplitPercentages[i]
+            );
+
+            bytes memory signature = signCommit(
+                commitId,
+                user,
+                seed + i,
+                i,
+                orderHash,
+                commitAmounts[i],
+                rewardAmount
+            );
+
+            luckyBuy.fulfill(
+                commitId,
+                address(0),
+                "",
+                rewardAmount,
+                address(0),
+                0,
+                signature
+            );
+
+            uint256 newCreatorBalance = luckyBuy.feeSplitBalances(
+                collectionCreator
+            );
+            assertEq(
+                newCreatorBalance,
+                initialCreatorBalance + expectedCreatorFee,
+                "Creator balance should increase by correct fee amount"
+            );
+
+            totalExpectedFees += expectedCreatorFee;
+        }
+
+        assertEq(
+            luckyBuy.feeSplitBalances(collectionCreator),
+            totalExpectedFees,
+            "Total accumulated fees should match expected amount"
+        );
+
+        // Test withdrawal
+        uint256 creatorStartingBalance = collectionCreator.balance;
+        vm.stopPrank();
+        vm.startPrank(collectionCreator);
+        luckyBuy.withdrawCreatorFees();
+        assertEq(
+            collectionCreator.balance,
+            creatorStartingBalance + totalExpectedFees,
+            "Creator should receive correct total fees"
+        );
+        assertEq(
+            luckyBuy.feeSplitBalances(collectionCreator),
+            0,
+            "Creator balance should be zero after withdrawal"
+        );
+        vm.stopPrank();
+    }
+
+    function testFeeSplitWithDifferentProtocolFees() public {
+        address collectionCreator = address(0x1);
+        uint256 creatorFeeSplitPercentage = 5000; // 50%
+        uint256[] memory protocolFees = new uint256[](3);
+        protocolFees[0] = 500; // 5%
+        protocolFees[1] = 1000; // 10%
+        protocolFees[2] = 2000; // 20%
+
+        vm.startPrank(admin);
+        luckyBuy.setFlatFee(0);
+        luckyBuy.setFeeReceiver(address(this));
+        (bool success, ) = address(luckyBuy).call{value: 10 ether}("");
+        assertTrue(success, "Initial funding should succeed");
+        vm.stopPrank();
+
+        vm.deal(user, 100 ether);
+        vm.startPrank(user);
+
+        uint256 commitAmount = 0.01 ether;
+        uint256 rewardAmount = 1 ether;
+        uint256 totalExpectedFees = 0;
+
+        for (uint256 i = 0; i < 3; i++) {
+            // Set protocol fee
+            vm.stopPrank();
+            vm.startPrank(admin);
+            luckyBuy.setProtocolFee(protocolFees[i]);
+            vm.stopPrank();
+            vm.startPrank(user);
+
+            uint256 protocolFee = luckyBuy.calculateProtocolFee(commitAmount);
+            uint256 expectedCreatorFee = (creatorFeeSplitPercentage *
+                protocolFee) / 10000;
+            uint256 initialCreatorBalance = luckyBuy.feeSplitBalances(
+                collectionCreator
+            );
+
+            bytes32 orderHash = luckyBuy.hashOrder(
+                address(0),
+                rewardAmount,
+                "",
+                address(0),
+                0
+            );
+
+            uint256 commitId = luckyBuy.commitWithFeeSplit{
+                value: commitAmount + protocolFee
+            }(
+                user,
+                cosigner,
+                seed + i,
+                orderHash,
+                rewardAmount,
+                collectionCreator,
+                creatorFeeSplitPercentage
+            );
+
+            bytes memory signature = signCommit(
+                commitId,
+                user,
+                seed + i,
+                i,
+                orderHash,
+                commitAmount,
+                rewardAmount
+            );
+
+            luckyBuy.fulfill(
+                commitId,
+                address(0),
+                "",
+                rewardAmount,
+                address(0),
+                0,
+                signature
+            );
+
+            uint256 newCreatorBalance = luckyBuy.feeSplitBalances(
+                collectionCreator
+            );
+            assertEq(
+                newCreatorBalance,
+                initialCreatorBalance + expectedCreatorFee,
+                "Creator balance should increase by correct fee amount"
+            );
+
+            totalExpectedFees += expectedCreatorFee;
+        }
+
+        assertEq(
+            luckyBuy.feeSplitBalances(collectionCreator),
+            totalExpectedFees,
+            "Total accumulated fees should match expected amount"
+        );
+
+        // Test withdrawal
+        uint256 creatorStartingBalance = collectionCreator.balance;
+        vm.stopPrank();
+        vm.startPrank(collectionCreator);
+        luckyBuy.withdrawCreatorFees();
+        assertEq(
+            collectionCreator.balance,
+            creatorStartingBalance + totalExpectedFees,
+            "Creator should receive correct total fees"
+        );
+        assertEq(
+            luckyBuy.feeSplitBalances(collectionCreator),
+            0,
+            "Creator balance should be zero after withdrawal"
+        );
+        vm.stopPrank();
+    }
+
+    function testFeeSplitAfterEmergencyWithdraw() public {
+        address collectionCreator = address(0x1);
+        uint256 creatorFeeSplitPercentage = 5000; // 50%
+
+        vm.startPrank(admin);
+        luckyBuy.setProtocolFee(1000); // 10%
+        luckyBuy.setFlatFee(0);
+        luckyBuy.setFeeReceiver(address(this));
+        (bool success, ) = address(luckyBuy).call{value: 10 ether}("");
+        assertTrue(success, "Initial funding should succeed");
+        vm.stopPrank();
+
+        vm.deal(user, 100 ether);
+        vm.startPrank(user);
+
+        uint256 commitAmount = 0.01 ether;
+        uint256 rewardAmount = 1 ether;
+        uint256 protocolFee = luckyBuy.calculateProtocolFee(commitAmount);
+        uint256 expectedCreatorFee = (creatorFeeSplitPercentage * protocolFee) /
+            10000;
+
+        bytes32 orderHash = luckyBuy.hashOrder(
+            address(0),
+            rewardAmount,
+            "",
+            address(0),
+            0
+        );
+
+        uint256 commitId = luckyBuy.commitWithFeeSplit{
+            value: commitAmount + protocolFee
+        }(
+            user,
+            cosigner,
+            seed,
+            orderHash,
+            rewardAmount,
+            collectionCreator,
+            creatorFeeSplitPercentage
+        );
+
+        bytes memory signature = signCommit(
+            commitId,
+            user,
+            seed,
+            0,
+            orderHash,
+            commitAmount,
+            rewardAmount
+        );
+
+        luckyBuy.fulfill(
+            commitId,
+            address(0),
+            "",
+            rewardAmount,
+            address(0),
+            0,
+            signature
+        );
+
+        assertEq(
+            luckyBuy.feeSplitBalances(collectionCreator),
+            expectedCreatorFee,
+            "Creator should have correct fee balance before emergency withdraw"
+        );
+
+        // Perform emergency withdraw
+        vm.stopPrank();
+        vm.startPrank(admin);
+        luckyBuy.emergencyWithdraw();
+        vm.stopPrank();
+
+        // Verify creator can still withdraw their fees
+        vm.startPrank(collectionCreator);
+        uint256 creatorStartingBalance = collectionCreator.balance;
+        luckyBuy.withdrawCreatorFees();
+        assertEq(
+            collectionCreator.balance,
+            creatorStartingBalance + expectedCreatorFee,
+            "Creator should receive correct fees after emergency withdraw"
+        );
+        assertEq(
+            luckyBuy.feeSplitBalances(collectionCreator),
+            0,
+            "Creator balance should be zero after withdrawal"
+        );
+        vm.stopPrank();
+    }
+
+    function testFeeSplitWhenPaused() public {
+        address collectionCreator = address(0x1);
+        uint256 creatorFeeSplitPercentage = 5000; // 50%
+
+        vm.startPrank(admin);
+        luckyBuy.setProtocolFee(1000); // 10%
+        luckyBuy.setFlatFee(0);
+        luckyBuy.setFeeReceiver(address(this));
+        (bool success, ) = address(luckyBuy).call{value: 10 ether}("");
+        assertTrue(success, "Initial funding should succeed");
+        vm.stopPrank();
+
+        vm.deal(user, 100 ether);
+        vm.startPrank(user);
+
+        uint256 commitAmount = 0.01 ether;
+        uint256 rewardAmount = 1 ether;
+        uint256 protocolFee = luckyBuy.calculateProtocolFee(commitAmount);
+
+        bytes32 orderHash = luckyBuy.hashOrder(
+            address(0),
+            rewardAmount,
+            "",
+            address(0),
+            0
+        );
+
+        // Pause the contract
+        vm.stopPrank();
+        vm.startPrank(admin);
+        luckyBuy.pause();
+        vm.stopPrank();
+
+        // Try to commit while paused
+        vm.startPrank(user);
+        vm.expectRevert();
+        luckyBuy.commitWithFeeSplit{value: commitAmount + protocolFee}(
+            user,
+            cosigner,
+            seed,
+            orderHash,
+            rewardAmount,
+            collectionCreator,
+            creatorFeeSplitPercentage
+        );
+
+        // Unpause the contract
+        vm.stopPrank();
+        vm.startPrank(admin);
+        luckyBuy.unpause();
+        vm.stopPrank();
+
+        // Try to commit after unpausing
+        vm.startPrank(user);
+        uint256 commitId = luckyBuy.commitWithFeeSplit{
+            value: commitAmount + protocolFee
+        }(
+            user,
+            cosigner,
+            seed,
+            orderHash,
+            rewardAmount,
+            collectionCreator,
+            creatorFeeSplitPercentage
+        );
+
+        bytes memory signature = signCommit(
+            commitId,
+            user,
+            seed,
+            0,
+            orderHash,
+            commitAmount,
+            rewardAmount
+        );
+
+        luckyBuy.fulfill(
+            commitId,
+            address(0),
+            "",
+            rewardAmount,
+            address(0),
+            0,
+            signature
+        );
+
+        uint256 expectedCreatorFee = (creatorFeeSplitPercentage * protocolFee) /
+            10000;
+        assertEq(
+            luckyBuy.feeSplitBalances(collectionCreator),
+            expectedCreatorFee,
+            "Creator should have correct fee balance"
+        );
+
+        // Test withdrawal
+        uint256 creatorStartingBalance = collectionCreator.balance;
+        vm.stopPrank();
+        vm.startPrank(collectionCreator);
+        luckyBuy.withdrawCreatorFees();
+        assertEq(
+            collectionCreator.balance,
+            creatorStartingBalance + expectedCreatorFee,
+            "Creator should receive correct fees"
+        );
+        assertEq(
+            luckyBuy.feeSplitBalances(collectionCreator),
+            0,
+            "Creator balance should be zero after withdrawal"
+        );
+        vm.stopPrank();
     }
 
     function signCommit(

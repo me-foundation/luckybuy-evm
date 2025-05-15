@@ -112,6 +112,7 @@ contract LuckyBuy is
         address indexed oldOwner,
         address indexed newOwner
     );
+    event CreatorFeesWithdrawn(address indexed creator, uint256 amount);
 
     error AlreadyCosigner();
     error AlreadyFulfilled();
@@ -478,6 +479,15 @@ contract LuckyBuy is
                 digest
             );
         }
+    }
+
+    function withdrawCreatorFees() external nonReentrant {
+        uint256 creatorFees = feeSplitBalances[msg.sender];
+        if (creatorFees == 0) revert InsufficientBalance();
+        feeSplitBalances[msg.sender] = 0;
+        (bool success, ) = payable(msg.sender).call{value: creatorFees}("");
+        if (!success) revert WithdrawalFailed();
+        emit CreatorFeesWithdrawn(msg.sender, creatorFees);
     }
 
     /// @notice Allows the admin to withdraw ETH from the contract balance
