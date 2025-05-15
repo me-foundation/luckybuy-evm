@@ -103,7 +103,6 @@ contract LuckyBuy is
         address indexed oldOwner,
         address indexed newOwner
     );
-    event CreatorFeesWithdrawn(address indexed creator, uint256 amount);
     event FeeSplit(
         uint256 indexed commitId,
         address indexed feeSplitReceiver,
@@ -591,8 +590,6 @@ contract LuckyBuy is
         nonReentrant
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        // As of the creator fee split changes, we need to leave the creator fee split balances in the contract
-
         treasuryBalance = 0;
         commitBalance = 0;
         protocolBalance = 0;
