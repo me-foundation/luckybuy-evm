@@ -44,7 +44,7 @@ contract LuckyBuy is
     uint256 public constant BASE_POINTS = 10000;
 
     // We want to split some of the fees we collect with the creator of the collection.
-    // We will set the creator address when the commit is created.
+    // We will define the split at fulfillment.
     mapping(address feeSplitReceiver => uint256 feeSplitBalance)
         public feeSplitBalances;
 
