@@ -213,6 +213,11 @@ contract TestLuckyBuyOpenEdition is Test {
         );
         vm.stopPrank();
 
+        console.log(luckyBuy.PRNG().rng(signature));
+        // log the recovered cosigner
+
+        console.log(cosigner);
+        console.log(_cosigner);
         assertEq(openEditionToken.balanceOf(address(user), 1), 1);
     }
     function testOpenEditionTransferFail() public {
