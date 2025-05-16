@@ -116,6 +116,10 @@ contract LuckyBuy is
         uint256 amount,
         bytes32 digest
     );
+    event FeeReceiverManagerTransferred(
+        address indexed oldFeeReceiverManager,
+        address indexed newFeeReceiverManager
+    );
 
     error AlreadyCosigner();
     error AlreadyFulfilled();
@@ -273,7 +277,7 @@ contract LuckyBuy is
         address token_,
         uint256 tokenId_,
         bytes calldata signature_
-    ) public payable nonReentrant whenNotPaused {
+    ) public payable whenNotPaused {
         _fulfill(
             commitId_,
             marketplace_,
@@ -306,7 +310,7 @@ contract LuckyBuy is
         bytes calldata signature_,
         address feeSplitReceiver_,
         uint256 feeSplitPercentage_
-    ) public payable nonReentrant whenNotPaused {
+    ) public payable whenNotPaused {
         if (feeSplitReceiver_ == address(0)) revert InvalidFeeSplitReceiver();
         if (feeSplitReceiver_ == address(this))
             revert InvalidFeeSplitReceiver();
@@ -363,7 +367,7 @@ contract LuckyBuy is
         address token_,
         uint256 tokenId_,
         bytes calldata signature_
-    ) internal {
+    ) internal nonReentrant {
         // validate tx
         if (msg.value > 0) _depositTreasury(msg.value);
         if (orderAmount_ > treasuryBalance) revert InsufficientBalance();
@@ -875,6 +879,7 @@ contract LuckyBuy is
     ) internal {
         _revokeRole(FEE_RECEIVER_MANAGER_ROLE, msg.sender);
         _grantRole(FEE_RECEIVER_MANAGER_ROLE, newFeeReceiverManager_);
+        emit FeeReceiverManagerTransferred(msg.sender, newFeeReceiverManager_);
     }
 
     /// @notice Sets the fee receiver
