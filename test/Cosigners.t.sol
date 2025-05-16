@@ -13,6 +13,7 @@ contract TestLuckyBuyCosigners is Test {
     address user = address(0x2);
     address cosigner1 = address(0x3);
     address cosigner2 = address(0x4);
+    address feeReceiverManager = address(0x5);
     uint256 protocolFee = 0;
     uint256 flatFee = 0;
 
@@ -27,7 +28,8 @@ contract TestLuckyBuyCosigners is Test {
             protocolFee,
             flatFee,
             msg.sender,
-            address(prng)
+            address(prng),
+            feeReceiverManager
         );
         vm.stopPrank();
     }

@@ -137,6 +137,7 @@ contract LuckyBuy is
     error InvalidFeeReceiver();
     error InvalidFeeSplitReceiver();
     error InvalidFeeSplitPercentage();
+    error InvalidFeeReceiverManager();
 
     modifier onlyCommitOwnerOrCosigner(uint256 commitId_) {
         if (
@@ -152,7 +153,8 @@ contract LuckyBuy is
         uint256 protocolFee_,
         uint256 flatFee_,
         address feeReceiver_,
-        address prng_
+        address prng_,
+        address feeReceiverManager_
     ) MEAccessControl() SignatureVerifier("LuckyBuy", "1") {
         uint256 existingBalance = address(this).balance;
         if (existingBalance > 0) {
@@ -163,6 +165,7 @@ contract LuckyBuy is
         _setFlatFee(flatFee_);
         _setFeeReceiver(feeReceiver_);
         PRNG = IPRNG(prng_);
+        _grantRole(FEE_RECEIVER_MANAGER_ROLE, feeReceiverManager_);
     }
 
     /// @notice Allows a user to commit funds for a chance to win
@@ -859,18 +862,35 @@ contract LuckyBuy is
         emit FlatFeeUpdated(oldFlatFee, flatFee_);
     }
 
+    function transferFeeReceiverManager(
+        address newFeeReceiverManager_
+    ) external onlyRole(FEE_RECEIVER_MANAGER_ROLE) {
+        if (newFeeReceiverManager_ == address(0))
+            revert InvalidFeeReceiverManager();
+        _transferFeeReceiverManager(newFeeReceiverManager_);
+    }
+
+    function _transferFeeReceiverManager(
+        address newFeeReceiverManager_
+    ) internal {
+        _revokeRole(FEE_RECEIVER_MANAGER_ROLE, msg.sender);
+        _grantRole(FEE_RECEIVER_MANAGER_ROLE, newFeeReceiverManager_);
+    }
+
     /// @notice Sets the fee receiver
     /// @param feeReceiver_ Address to set as fee receiver
     /// @dev Only callable by admin role
     /// @dev Emits a FeeReceiverUpdated event
     function setFeeReceiver(
         address feeReceiver_
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    ) external onlyRole(FEE_RECEIVER_MANAGER_ROLE) {
         _setFeeReceiver(feeReceiver_);
     }
 
     function _setFeeReceiver(address feeReceiver_) internal {
         if (feeReceiver_ == address(0)) revert InvalidFeeReceiver();
+        if (hasRole(FEE_RECEIVER_MANAGER_ROLE, feeReceiver_))
+            revert InvalidFeeReceiverManager();
         address oldFeeReceiver = feeReceiver;
         feeReceiver = payable(feeReceiver_);
         emit FeeReceiverUpdated(oldFeeReceiver, feeReceiver_);

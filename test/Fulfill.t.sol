@@ -29,8 +29,17 @@ contract MockLuckyBuy is LuckyBuy {
         uint256 protocolFee_,
         uint256 flatFee_,
         address feeReceiver_,
-        address prng_
-    ) LuckyBuy(protocolFee_, flatFee_, feeReceiver_, prng_) {}
+        address prng_,
+        address feeReceiverManager_
+    )
+        LuckyBuy(
+            protocolFee_,
+            flatFee_,
+            feeReceiver_,
+            prng_,
+            feeReceiverManager_
+        )
+    {}
 
     /// @notice Calculates fee amount based on input amount and fee percentage
     /// @param _amount The amount to calculate fee on
@@ -80,7 +89,7 @@ contract FulfillTest is Test {
     PRNG prng;
     MockLuckyBuy luckyBuy;
     address admin = address(0x1);
-
+    address feeReceiverManager = address(0x2);
     address cosigner = 0xE052c9CFe22B5974DC821cBa907F1DAaC7979c94;
     address user2 = 0x094F4431AFd206073476B4300D3a7cbC76D39D17;
 
@@ -150,7 +159,13 @@ contract FulfillTest is Test {
 
             vm.startPrank(admin);
             prng = new PRNG();
-            luckyBuy = new MockLuckyBuy(0, 0, msg.sender, address(prng));
+            luckyBuy = new MockLuckyBuy(
+                0,
+                0,
+                msg.sender,
+                address(prng),
+                feeReceiverManager
+            );
             vm.deal(admin, 100 ether);
             vm.deal(address(this), 100 ether);
             vm.deal(user2, 100 ether);

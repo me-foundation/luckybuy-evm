@@ -12,8 +12,17 @@ contract MockLuckyBuy is LuckyBuy {
         uint256 protocolFee_,
         uint256 flatFee_,
         address feeReceiver_,
-        address prng_
-    ) LuckyBuy(protocolFee_, flatFee_, feeReceiver_, prng_) {
+        address prng_,
+        address feeReceiverManager_
+    )
+        LuckyBuy(
+            protocolFee_,
+            flatFee_,
+            feeReceiver_,
+            prng_,
+            feeReceiverManager_
+        )
+    {
         owner = msg.sender;
     }
 
@@ -71,6 +80,7 @@ contract TestLuckyBuyOpenEdition is Test {
     MockERC1155 openEditionToken;
     address admin = address(0x1);
     address user = address(0x2);
+    address feeReceiverManager = address(0x3);
 
     uint256 constant COSIGNER_PRIVATE_KEY = 1234;
     address cosigner;
@@ -94,7 +104,8 @@ contract TestLuckyBuyOpenEdition is Test {
             protocolFee,
             flatFee,
             msg.sender,
-            address(prng)
+            address(prng),
+            feeReceiverManager
         );
         vm.deal(admin, 1000000 ether);
         vm.deal(user, 100000 ether);

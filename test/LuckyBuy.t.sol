@@ -9,8 +9,17 @@ contract MockLuckyBuy is LuckyBuy {
         uint256 protocolFee_,
         uint256 flatFee_,
         address feeReceiver_,
-        address prng_
-    ) LuckyBuy(protocolFee_, flatFee_, feeReceiver_, prng_) {}
+        address prng_,
+        address feeReceiverManager_
+    )
+        LuckyBuy(
+            protocolFee_,
+            flatFee_,
+            feeReceiver_,
+            prng_,
+            feeReceiverManager_
+        )
+    {}
 
     function setIsFulfilled(uint256 commitId_, bool isFulfilled_) public {
         isFulfilled[commitId_] = isFulfilled_;
@@ -41,7 +50,7 @@ contract TestLuckyBuyCommit is Test {
     address receiver = address(0x3);
     uint256 constant COSIGNER_PRIVATE_KEY = 1234;
     address cosigner = vm.addr(COSIGNER_PRIVATE_KEY);
-
+    address feeReceiverManager = address(0x4);
     uint256 protocolFee = 0;
     uint256 flatFee = 0;
 
@@ -84,7 +93,13 @@ contract TestLuckyBuyCommit is Test {
     function setUp() public {
         vm.startPrank(admin);
         prng = new PRNG();
-        luckyBuy = new MockLuckyBuy(protocolFee, flatFee, admin, address(prng));
+        luckyBuy = new MockLuckyBuy(
+            protocolFee,
+            flatFee,
+            admin,
+            address(prng),
+            feeReceiverManager
+        );
         vm.deal(admin, 100 ether);
         vm.deal(receiver, 100 ether);
         vm.deal(address(this), 100 ether);
@@ -639,7 +654,8 @@ contract TestLuckyBuyCommit is Test {
             protocolFee,
             flatFee,
             msg.sender,
-            address(prng)
+            address(prng),
+            feeReceiverManager
         );
 
         // Verify the deployment address matches prediction
@@ -1303,6 +1319,11 @@ contract TestLuckyBuyCommit is Test {
         assertEq(luckyBuy.feeReceiver(), admin);
 
         vm.startPrank(admin);
+        vm.expectRevert();
+        luckyBuy.setFeeReceiver(address(this));
+        vm.stopPrank();
+
+        vm.startPrank(feeReceiverManager);
         luckyBuy.setFeeReceiver(address(this));
         vm.stopPrank();
 
@@ -1324,11 +1345,14 @@ contract TestLuckyBuyCommit is Test {
     function testFeeSplitSuccess() public {
         address collectionCreator = address(0x1);
         uint256 creatorFeeSplitPercentage = 5000; // 50%
+
+        vm.prank(feeReceiverManager);
+        luckyBuy.setFeeReceiver(address(this));
+
         vm.startPrank(admin);
 
         luckyBuy.setProtocolFee(1000); // 10%
         luckyBuy.setFlatFee(0);
-        luckyBuy.setFeeReceiver(address(this));
 
         (bool success, ) = address(luckyBuy).call{value: 10 ether}("");
         assertTrue(success, "Initial funding should succeed");
@@ -1554,6 +1578,63 @@ contract TestLuckyBuyCommit is Test {
 
         // Return the signature
         return abi.encodePacked(r, s, v);
+    }
+
+    function testFeeReceiverManagerRole() public {
+        // Test that only fee receiver manager can set fee receiver
+        address newFeeReceiver = address(0x9);
+
+        // Try to set fee receiver as admin (should fail)
+        vm.startPrank(admin);
+        vm.expectRevert();
+        luckyBuy.setFeeReceiver(newFeeReceiver);
+        vm.stopPrank();
+
+        // Set fee receiver as fee receiver manager (should succeed)
+        vm.startPrank(feeReceiverManager);
+        luckyBuy.setFeeReceiver(newFeeReceiver);
+        vm.stopPrank();
+
+        assertEq(luckyBuy.feeReceiver(), newFeeReceiver);
+    }
+
+    function testFeeReceiverManagerTransfer() public {
+        address newFeeReceiverManager = address(0xA);
+
+        // Try to transfer role as admin (should fail)
+        vm.startPrank(admin);
+        vm.expectRevert();
+        luckyBuy.transferFeeReceiverManager(newFeeReceiverManager);
+        vm.stopPrank();
+
+        // Transfer role as current fee receiver manager (should succeed)
+        vm.startPrank(feeReceiverManager);
+        luckyBuy.transferFeeReceiverManager(newFeeReceiverManager);
+        vm.stopPrank();
+
+        // Verify new fee receiver manager can set fee receiver
+        address newFeeReceiver = address(0xB);
+        vm.startPrank(newFeeReceiverManager);
+        luckyBuy.setFeeReceiver(newFeeReceiver);
+        vm.stopPrank();
+
+        assertEq(luckyBuy.feeReceiver(), newFeeReceiver);
+    }
+
+    function testInvalidFeeReceiverManager() public {
+        // Try to set fee receiver manager to zero address
+        vm.startPrank(feeReceiverManager);
+        vm.expectRevert(LuckyBuy.InvalidFeeReceiverManager.selector);
+        luckyBuy.transferFeeReceiverManager(address(0));
+        vm.stopPrank();
+    }
+
+    function testInvalidFeeReceiver() public {
+        // Try to set fee receiver to zero address
+        vm.startPrank(feeReceiverManager);
+        vm.expectRevert(LuckyBuy.InvalidFeeReceiver.selector);
+        luckyBuy.setFeeReceiver(address(0));
+        vm.stopPrank();
     }
 
     receive() external payable {}

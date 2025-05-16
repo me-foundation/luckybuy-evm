@@ -9,8 +9,17 @@ contract MockLuckyBuy is LuckyBuy {
         uint256 protocolFee_,
         uint256 flatFee_,
         address feeReceiver_,
-        address prng_
-    ) LuckyBuy(protocolFee_, flatFee_, feeReceiver_, prng_) {}
+        address prng_,
+        address feeReceiverManager_
+    )
+        LuckyBuy(
+            protocolFee_,
+            flatFee_,
+            feeReceiver_,
+            prng_,
+            feeReceiverManager_
+        )
+    {}
 
     function setIsFulfilled(uint256 commitId_, bool isFulfilled_) public {
         isFulfilled[commitId_] = isFulfilled_;
@@ -53,7 +62,7 @@ contract TestLuckyBuyCommit is Test {
     bytes32 orderHash = hex"";
     uint256 amount = 1 ether;
     uint256 reward = 10 ether; // 10% odds
-
+    address feeReceiverManager = address(0x3);
     string constant OUTPUT_FILE = "./simulation_results.csv";
 
     function setUp() public {
@@ -63,7 +72,8 @@ contract TestLuckyBuyCommit is Test {
             protocolFee,
             flatFee,
             msg.sender,
-            address(prng)
+            address(prng),
+            feeReceiverManager
         );
         vm.deal(admin, 1000000 ether);
         vm.deal(user, 100000 ether);

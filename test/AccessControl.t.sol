@@ -12,6 +12,7 @@ contract AccessControlTest is Test {
     address public admin;
     address public ops;
     address public user;
+    address public feeReceiverManager;
 
     event CosignerAdded(address indexed cosigner);
     event CosignerRemoved(address indexed cosigner);
@@ -22,10 +23,16 @@ contract AccessControlTest is Test {
         admin = makeAddr("admin");
         ops = makeAddr("ops");
         user = makeAddr("user");
-
+        feeReceiverManager = makeAddr("feeReceiverManager");
         vm.startPrank(admin);
         prng = new PRNG();
-        luckyBuy = new LuckyBuy(0, 0, msg.sender, address(prng)); // Initialize with 0 protocol fee
+        luckyBuy = new LuckyBuy(
+            0,
+            0,
+            msg.sender,
+            address(prng),
+            feeReceiverManager
+        ); // Initialize with 0 protocol fee
 
         vm.stopPrank();
     }

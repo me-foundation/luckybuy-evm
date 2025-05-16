@@ -31,6 +31,7 @@ contract DeployPRNG is Script {
 contract DeployLuckyBuy is Script {
     address feeReceiver = 0x85d31445AF0b0fF26851bf3C5e27e90058Df3270;
     address prng = 0xBdAa680FcD544acc373c5f190449575768Ac4822;
+    address feeReceiverManager = 0x7C51fAEe5666B47b2F7E81b7a6A8DEf4C76D47E3;
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
@@ -43,7 +44,8 @@ contract DeployLuckyBuy is Script {
             protocolFee,
             flatFee,
             feeReceiver,
-            address(prng)
+            address(prng),
+            feeReceiverManager
         );
 
         console.log(address(luckyBuy));
