@@ -86,7 +86,11 @@ contract TestLuckyBuyCommit is Test {
     );
     event CommitExpired(uint256 indexed commitId);
 
-    event Withdrawal(address indexed sender, uint256 amount);
+    event Withdrawal(
+        address indexed sender,
+        uint256 amount,
+        address feeReceiver
+    );
 
     event MaxRewardUpdated(uint256 oldMaxReward, uint256 newMaxReward);
 
@@ -925,7 +929,7 @@ contract TestLuckyBuyCommit is Test {
 
     function testWithdrawSuccess() public {
         uint256 withdrawAmount = 1 ether;
-
+        address feeReceiver = luckyBuy.feeReceiver();
         // Fund the contract first
         vm.deal(address(this), withdrawAmount);
         (bool success, ) = address(luckyBuy).call{value: withdrawAmount}("");
@@ -935,7 +939,7 @@ contract TestLuckyBuyCommit is Test {
         uint256 initialAdminBalance = address(admin).balance;
 
         vm.expectEmit(true, true, true, false);
-        emit Withdrawal(admin, withdrawAmount);
+        emit Withdrawal(admin, withdrawAmount, feeReceiver);
 
         vm.prank(admin);
         luckyBuy.withdraw(withdrawAmount);

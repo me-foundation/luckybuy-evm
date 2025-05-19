@@ -81,7 +81,11 @@ contract LuckyBuy is
     );
     event MaxRewardUpdated(uint256 oldMaxReward, uint256 newMaxReward);
     event ProtocolFeeUpdated(uint256 oldProtocolFee, uint256 newProtocolFee);
-    event Withdrawal(address indexed sender, uint256 amount);
+    event Withdrawal(
+        address indexed sender,
+        uint256 amount,
+        address feeReceiver
+    );
     event Deposit(address indexed sender, uint256 amount);
     event MinRewardUpdated(uint256 oldMinReward, uint256 newMinReward);
     event CommitExpireTimeUpdated(
@@ -586,7 +590,7 @@ contract LuckyBuy is
         (bool success, ) = payable(feeReceiver).call{value: amount}("");
         if (!success) revert WithdrawalFailed();
 
-        emit Withdrawal(msg.sender, amount);
+        emit Withdrawal(msg.sender, amount, feeReceiver);
     }
 
     /// @notice Allows the admin to withdraw all ETH from the contract
@@ -607,7 +611,7 @@ contract LuckyBuy is
         if (!success) revert WithdrawalFailed();
 
         _pause();
-        emit Withdrawal(msg.sender, currentBalance);
+        emit Withdrawal(msg.sender, currentBalance, feeReceiver);
     }
 
     /// @notice Allows the commit owner to expire a commit in the event that the commit is not or cannot be fulfilled
