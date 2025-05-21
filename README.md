@@ -2,6 +2,16 @@
 
 LuckyBuy is a decentralized protocol that enables probabilistic NFT purchases. Users can commit a fraction of an NFT's price for a proportional chance to win the NFT. If they win, they receive the NFT at a discount. If they don't win, they lose their committed amount.
 
+## Deployments
+
+Current Mainnet: 0x0178070d088c235e1dc2696d257f90b3ded475a3
+PRNG Mainnet: 0xBdAa680FcD544acc373c5f190449575768Ac4822
+Cosigner: 0x993f64E049F95d246dc7B0D196CB5dC419d4e1f1
+
+OpenEdition: 0x3e988D49b3dE913FcE7D4ea0037919345ebDC3F8
+Token Id: 0
+Amount: 1
+
 ## Overview
 
 The protocol works in three steps:
@@ -141,15 +151,6 @@ The fees can be configured by the contract admin:
 - `setProtocolFee(uint256 protocolFee_)`: Sets the protocol fee percentage (in basis points)
 
 The protocol fee is limited to a maximum of 100% (10000 basis points).
-
-## Deployments
-
-Current Mainnet: 0x0178070d088c235e1dc2696d257f90b3ded475a3
-Cosigner: 0x993f64E049F95d246dc7B0D196CB5dC419d4e1f1
-
-OpenEdition: 0x3e988D49b3dE913FcE7D4ea0037919345ebDC3F8
-Token Id: 0
-Amount: 1
 
 ## Verification
 
