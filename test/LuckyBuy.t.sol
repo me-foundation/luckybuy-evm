@@ -4,6 +4,39 @@ pragma solidity 0.8.28;
 import "forge-std/Test.sol";
 import "src/LuckyBuy.sol";
 import "src/PRNG.sol";
+import {TokenRescuer} from "../src/common/TokenRescuer.sol";
+import {MEAccessControl} from "../src/common/MEAccessControl.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {ERC1155} from "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+
+contract MockERC20 is ERC20 {
+    constructor() ERC20("Mock ERC20", "MOCK") {}
+
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
+    }
+}
+
+contract MockERC721 is ERC721 {
+    constructor() ERC721("Mock ERC721", "MOCK") {}
+
+    function mint(address to, uint256 tokenId) external {
+        _mint(to, tokenId);
+    }
+}
+
+contract MockERC1155 is ERC1155 {
+    constructor() ERC1155("") {}
+
+    function mint(address to, uint256 id, uint256 amount) external {
+        _mint(to, id, amount, "");
+    }
+}
+
 contract MockLuckyBuy is LuckyBuy {
     constructor(
         uint256 protocolFee_,
@@ -65,6 +98,9 @@ contract TestLuckyBuyCommit is Test {
     uint256 orderAmount = 1 ether;
     address orderToken = address(0);
     uint256 orderTokenId = 0;
+
+    address bob = address(0xB0B);
+    address charlie = address(0xC0FFEE);
 
     event Commit(
         address indexed sender,
@@ -1638,6 +1674,356 @@ contract TestLuckyBuyCommit is Test {
         vm.startPrank(feeReceiverManager);
         vm.expectRevert(LuckyBuy.InvalidFeeReceiver.selector);
         luckyBuy.setFeeReceiver(address(0));
+        vm.stopPrank();
+    }
+
+    function testRescueERC20() public {
+        // Deploy mock ERC20
+        MockERC20 token = new MockERC20();
+        token.mint(address(luckyBuy), 1000 ether);
+
+        // Test single token rescue
+        vm.startPrank(admin);
+        luckyBuy.rescueERC20(address(token), bob, 100 ether);
+        vm.stopPrank();
+
+        assertEq(token.balanceOf(bob), 100 ether);
+        assertEq(token.balanceOf(address(luckyBuy)), 900 ether);
+    }
+
+    function testRescueERC20Batch() public {
+        // Deploy mock ERC20s
+        MockERC20 token1 = new MockERC20();
+        MockERC20 token2 = new MockERC20();
+        token1.mint(address(luckyBuy), 1000 ether);
+        token2.mint(address(luckyBuy), 500 ether);
+
+        // Test batch rescue
+        address[] memory tokens = new address[](2);
+        address[] memory to = new address[](2);
+        uint256[] memory amounts = new uint256[](2);
+
+        tokens[0] = address(token1);
+        tokens[1] = address(token2);
+        to[0] = bob;
+        to[1] = charlie;
+        amounts[0] = 100 ether;
+        amounts[1] = 200 ether;
+
+        vm.startPrank(admin);
+        luckyBuy.rescueERC20Batch(tokens, to, amounts);
+        vm.stopPrank();
+
+        assertEq(token1.balanceOf(bob), 100 ether);
+        assertEq(token2.balanceOf(charlie), 200 ether);
+        assertEq(token1.balanceOf(address(luckyBuy)), 900 ether);
+        assertEq(token2.balanceOf(address(luckyBuy)), 300 ether);
+    }
+
+    function testRescueERC721() public {
+        // Deploy mock ERC721
+        MockERC721 token = new MockERC721();
+        token.mint(address(luckyBuy), 1);
+
+        // Test single token rescue
+        vm.startPrank(admin);
+        luckyBuy.rescueERC721(address(token), bob, 1);
+        vm.stopPrank();
+
+        assertEq(token.ownerOf(1), bob);
+    }
+
+    function testRescueERC721Batch() public {
+        // Deploy mock ERC721s
+        MockERC721 token1 = new MockERC721();
+        MockERC721 token2 = new MockERC721();
+        token1.mint(address(luckyBuy), 1);
+        token2.mint(address(luckyBuy), 2);
+
+        // Test batch rescue
+        address[] memory tokens = new address[](2);
+        address[] memory to = new address[](2);
+        uint256[] memory tokenIds = new uint256[](2);
+
+        tokens[0] = address(token1);
+        tokens[1] = address(token2);
+        to[0] = bob;
+        to[1] = charlie;
+        tokenIds[0] = 1;
+        tokenIds[1] = 2;
+
+        vm.startPrank(admin);
+        luckyBuy.rescueERC721Batch(tokens, to, tokenIds);
+        vm.stopPrank();
+
+        assertEq(token1.ownerOf(1), bob);
+        assertEq(token2.ownerOf(2), charlie);
+    }
+
+    function testRescueERC1155() public {
+        // Deploy mock ERC1155
+        MockERC1155 token = new MockERC1155();
+        token.mint(address(luckyBuy), 1, 100);
+
+        // Test single token rescue
+        vm.startPrank(admin);
+        luckyBuy.rescueERC1155(address(token), bob, 1, 50);
+        vm.stopPrank();
+
+        assertEq(token.balanceOf(bob, 1), 50);
+        assertEq(token.balanceOf(address(luckyBuy), 1), 50);
+    }
+
+    function testRescueERC1155Batch() public {
+        // Deploy mock ERC1155
+        MockERC1155 token = new MockERC1155();
+        token.mint(address(luckyBuy), 1, 100);
+        token.mint(address(luckyBuy), 2, 200);
+
+        // Test batch rescue
+        address[] memory tokens = new address[](2);
+        address[] memory tos = new address[](2);
+        uint256[] memory tokenIds = new uint256[](2);
+        uint256[] memory amounts = new uint256[](2);
+
+        tokens[0] = address(token);
+        tokens[1] = address(token);
+        tos[0] = bob;
+        tos[1] = bob;
+        tokenIds[0] = 1;
+        tokenIds[1] = 2;
+        amounts[0] = 50;
+        amounts[1] = 100;
+
+        vm.startPrank(admin);
+        luckyBuy.rescueERC1155Batch(tokens, tos, tokenIds, amounts);
+        vm.stopPrank();
+
+        assertEq(token.balanceOf(bob, 1), 50);
+        assertEq(token.balanceOf(bob, 2), 100);
+        assertEq(token.balanceOf(address(luckyBuy), 1), 50);
+        assertEq(token.balanceOf(address(luckyBuy), 2), 100);
+    }
+
+    function testRescueERC20NonAdmin() public {
+        MockERC20 token = new MockERC20();
+        token.mint(address(luckyBuy), 1000 ether);
+
+        vm.startPrank(user);
+        vm.expectRevert();
+        luckyBuy.rescueERC20(address(token), bob, 100 ether);
+        vm.stopPrank();
+    }
+
+    function testRescueERC721NonAdmin() public {
+        MockERC721 token = new MockERC721();
+        token.mint(address(luckyBuy), 1);
+
+        vm.startPrank(user);
+        vm.expectRevert();
+        luckyBuy.rescueERC721(address(token), bob, 1);
+        vm.stopPrank();
+    }
+
+    function testRescueERC1155NonAdmin() public {
+        MockERC1155 token = new MockERC1155();
+        token.mint(address(luckyBuy), 1, 100);
+
+        vm.startPrank(user);
+        vm.expectRevert();
+        luckyBuy.rescueERC1155(address(token), bob, 1, 50);
+        vm.stopPrank();
+    }
+
+    function testRescueERC20BatchNonAdmin() public {
+        MockERC20 token = new MockERC20();
+        token.mint(address(luckyBuy), 1000 ether);
+
+        address[] memory tokens = new address[](1);
+        address[] memory to = new address[](1);
+        uint256[] memory amounts = new uint256[](1);
+
+        tokens[0] = address(token);
+        to[0] = bob;
+        amounts[0] = 100 ether;
+
+        vm.startPrank(user);
+        vm.expectRevert();
+        luckyBuy.rescueERC20Batch(tokens, to, amounts);
+        vm.stopPrank();
+    }
+
+    function testRescueERC721BatchNonAdmin() public {
+        MockERC721 token = new MockERC721();
+        token.mint(address(luckyBuy), 1);
+
+        address[] memory tokens = new address[](1);
+        address[] memory to = new address[](1);
+        uint256[] memory tokenIds = new uint256[](1);
+
+        tokens[0] = address(token);
+        to[0] = bob;
+        tokenIds[0] = 1;
+
+        vm.startPrank(user);
+        vm.expectRevert();
+        luckyBuy.rescueERC721Batch(tokens, to, tokenIds);
+        vm.stopPrank();
+    }
+
+    function testRescueERC1155BatchNonAdmin() public {
+        MockERC1155 token = new MockERC1155();
+        token.mint(address(luckyBuy), 1, 100);
+
+        address[] memory tokens = new address[](1);
+        address[] memory tos = new address[](1);
+        uint256[] memory tokenIds = new uint256[](1);
+        uint256[] memory amounts = new uint256[](1);
+
+        tokens[0] = address(token);
+        tos[0] = bob;
+        tokenIds[0] = 1;
+        amounts[0] = 50;
+
+        vm.startPrank(user);
+        vm.expectRevert();
+        luckyBuy.rescueERC1155Batch(tokens, tos, tokenIds, amounts);
+        vm.stopPrank();
+    }
+
+    function testRescueERC20ZeroAddress() public {
+        MockERC20 token = new MockERC20();
+        token.mint(address(luckyBuy), 1000 ether);
+
+        vm.startPrank(admin);
+        vm.expectRevert(TokenRescuer.TokenRescuerInvalidAddress.selector);
+        luckyBuy.rescueERC20(address(0), bob, 100 ether);
+        vm.stopPrank();
+    }
+
+    function testRescueERC721ZeroAddress() public {
+        MockERC721 token = new MockERC721();
+        token.mint(address(luckyBuy), 1);
+
+        vm.startPrank(admin);
+        vm.expectRevert(TokenRescuer.TokenRescuerInvalidAddress.selector);
+        luckyBuy.rescueERC721(address(0), bob, 1);
+        vm.stopPrank();
+    }
+
+    function testRescueERC1155ZeroAddress() public {
+        MockERC1155 token = new MockERC1155();
+        token.mint(address(luckyBuy), 1, 100);
+
+        vm.startPrank(admin);
+        vm.expectRevert(TokenRescuer.TokenRescuerInvalidAddress.selector);
+        luckyBuy.rescueERC1155(address(0), bob, 1, 50);
+        vm.stopPrank();
+    }
+
+    function testRescueERC20ZeroAmount() public {
+        MockERC20 token = new MockERC20();
+        token.mint(address(luckyBuy), 1000 ether);
+
+        vm.startPrank(admin);
+        vm.expectRevert(
+            TokenRescuer.TokenRescuerAmountMustBeGreaterThanZero.selector
+        );
+        luckyBuy.rescueERC20(address(token), bob, 0);
+        vm.stopPrank();
+    }
+
+    function testRescueERC1155ZeroAmount() public {
+        MockERC1155 token = new MockERC1155();
+        token.mint(address(luckyBuy), 1, 100);
+
+        vm.startPrank(admin);
+        vm.expectRevert(
+            TokenRescuer.TokenRescuerAmountMustBeGreaterThanZero.selector
+        );
+        luckyBuy.rescueERC1155(address(token), bob, 1, 0);
+        vm.stopPrank();
+    }
+
+    function testRescueERC20InsufficientBalance() public {
+        MockERC20 token = new MockERC20();
+        token.mint(address(luckyBuy), 1000 ether);
+
+        vm.startPrank(admin);
+        vm.expectRevert(TokenRescuer.TokenRescuerInsufficientBalance.selector);
+        luckyBuy.rescueERC20(address(token), bob, 2000 ether);
+        vm.stopPrank();
+    }
+
+    function testRescueERC1155InsufficientBalance() public {
+        MockERC1155 token = new MockERC1155();
+        token.mint(address(luckyBuy), 1, 100);
+
+        vm.startPrank(admin);
+        vm.expectRevert(TokenRescuer.TokenRescuerInsufficientBalance.selector);
+        luckyBuy.rescueERC1155(address(token), bob, 1, 200);
+        vm.stopPrank();
+    }
+
+    function testRescueERC20BatchArrayLengthMismatch() public {
+        MockERC20 token = new MockERC20();
+        token.mint(address(luckyBuy), 1000 ether);
+
+        address[] memory tokens = new address[](2);
+        address[] memory to = new address[](1);
+        uint256[] memory amounts = new uint256[](2);
+
+        tokens[0] = address(token);
+        tokens[1] = address(token);
+        to[0] = bob;
+        amounts[0] = 100 ether;
+        amounts[1] = 200 ether;
+
+        vm.startPrank(admin);
+        vm.expectRevert(TokenRescuer.TokenRescuerArrayLengthMismatch.selector);
+        luckyBuy.rescueERC20Batch(tokens, to, amounts);
+        vm.stopPrank();
+    }
+
+    function testRescueERC721BatchArrayLengthMismatch() public {
+        MockERC721 token = new MockERC721();
+        token.mint(address(luckyBuy), 1);
+
+        address[] memory tokens = new address[](2);
+        address[] memory to = new address[](1);
+        uint256[] memory tokenIds = new uint256[](2);
+
+        tokens[0] = address(token);
+        tokens[1] = address(token);
+        to[0] = bob;
+        tokenIds[0] = 1;
+        tokenIds[1] = 2;
+
+        vm.startPrank(admin);
+        vm.expectRevert(TokenRescuer.TokenRescuerArrayLengthMismatch.selector);
+        luckyBuy.rescueERC721Batch(tokens, to, tokenIds);
+        vm.stopPrank();
+    }
+
+    function testRescueERC1155BatchArrayLengthMismatch() public {
+        MockERC1155 token = new MockERC1155();
+        token.mint(address(luckyBuy), 1, 100);
+
+        address[] memory tokens = new address[](2);
+        address[] memory tos = new address[](1);
+        uint256[] memory tokenIds = new uint256[](2);
+        uint256[] memory amounts = new uint256[](1);
+
+        tokens[0] = address(token);
+        tokens[1] = address(token);
+        tos[0] = bob;
+        tokenIds[0] = 1;
+        tokenIds[1] = 2;
+        amounts[0] = 50;
+
+        vm.startPrank(admin);
+        vm.expectRevert(TokenRescuer.TokenRescuerArrayLengthMismatch.selector);
+        luckyBuy.rescueERC1155Batch(tokens, tos, tokenIds, amounts);
         vm.stopPrank();
     }
 

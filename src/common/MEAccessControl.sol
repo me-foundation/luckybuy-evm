@@ -12,12 +12,14 @@ contract MEAccessControl is AccessControl {
     bytes32 public constant OPS_ROLE = keccak256("OPS_ROLE");
     bytes32 public constant FEE_RECEIVER_MANAGER_ROLE =
         keccak256("FEE_RECEIVER_MANAGER_ROLE");
+    bytes32 public constant RESCUE_ROLE = keccak256("RESCUE_ROLE");
 
     error InvalidOwner();
 
     constructor() {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(OPS_ROLE, msg.sender);
+        _grantRole(RESCUE_ROLE, msg.sender);
     }
 
     /// @notice Transfers admin rights to a new address. Admin functions are intentionally not paused
@@ -45,6 +47,20 @@ contract MEAccessControl is AccessControl {
     /// @param user Address to revoke operations role from
     function removeOpsUser(address user) public onlyRole(DEFAULT_ADMIN_ROLE) {
         _revokeRole(OPS_ROLE, user);
+    }
+
+    /// @notice Adds a new rescue user
+    /// @param user Address to grant rescue role to
+    function addRescueUser(address user) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        _grantRole(RESCUE_ROLE, user);
+    }
+
+    /// @notice Removes a rescue user
+    /// @param user Address to revoke rescue role from
+    function removeRescueUser(
+        address user
+    ) public onlyRole(DEFAULT_ADMIN_ROLE) {
+        _revokeRole(RESCUE_ROLE, user);
     }
 
     /**
