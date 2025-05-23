@@ -771,13 +771,6 @@ contract LuckyBuy is
         _rescueERC1155Batch(tokens, tos, tokenIds, amounts);
     }
 
-    function rescueETH(
-        address to,
-        uint256 amount
-    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _rescueETH(to, amount);
-    }
-
     // ############################################################
     // ############ GETTERS & SETTERS ############
     // ############################################################
