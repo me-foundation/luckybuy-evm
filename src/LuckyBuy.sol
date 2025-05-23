@@ -10,12 +10,13 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./common/MEAccessControl.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 import {IPRNG} from "./common/interfaces/IPRNG.sol";
-
+import {TokenRescuer} from "./common/TokenRescuer.sol";
 contract LuckyBuy is
     MEAccessControl,
     Pausable,
     SignatureVerifier,
-    ReentrancyGuard
+    ReentrancyGuard,
+    TokenRescuer
 {
     IPRNG public PRNG;
     address payable public feeReceiver;
@@ -31,6 +32,7 @@ contract LuckyBuy is
     uint256 public treasuryBalance; // The contract balance
     uint256 public commitBalance; // The open commit balances
     uint256 public protocolBalance; // The protocol fees for the open commits
+
     uint256 public maxReward = 50 ether;
     uint256 public protocolFee = 0;
     uint256 public minReward = BASE_POINTS;
@@ -688,6 +690,86 @@ contract LuckyBuy is
         );
 
         emit OpenEditionContractTransferred(oldOwner, newOwner);
+    }
+
+    // ############################################################
+    // ############ RESCUE FUNCTIONS ############
+    // ############################################################
+
+    function rescueERC20(
+        address token,
+        address to,
+        uint256 amount
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        address[] memory tokens = new address[](1);
+        address[] memory tos = new address[](1);
+        uint256[] memory amounts = new uint256[](1);
+
+        tokens[0] = token;
+        tos[0] = to;
+        amounts[0] = amount;
+
+        _rescueERC20Batch(tokens, tos, amounts);
+    }
+
+    function rescueERC721(
+        address token,
+        address to,
+        uint256 tokenId
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        address[] memory tokens = new address[](1);
+        address[] memory tos = new address[](1);
+        uint256[] memory tokenIds = new uint256[](1);
+
+        tokens[0] = token;
+        tos[0] = to;
+        tokenIds[0] = tokenId;
+
+        _rescueERC721Batch(tokens, tos, tokenIds);
+    }
+
+    function rescueERC1155(
+        address token,
+        address to,
+        uint256 tokenId,
+        uint256 amount
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        address[] memory tokens = new address[](1);
+        address[] memory tos = new address[](1);
+        uint256[] memory tokenIds = new uint256[](1);
+        uint256[] memory amounts = new uint256[](1);
+
+        tokens[0] = token;
+        tos[0] = to;
+        tokenIds[0] = tokenId;
+        amounts[0] = amount;
+
+        _rescueERC1155Batch(tokens, tos, tokenIds, amounts);
+    }
+
+    function rescueERC20Batch(
+        address[] calldata tokens,
+        address[] calldata to,
+        uint256[] calldata amounts
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _rescueERC20Batch(tokens, to, amounts);
+    }
+
+    function rescueERC721Batch(
+        address[] calldata tokens,
+        address[] calldata to,
+        uint256[] calldata tokenIds
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _rescueERC721Batch(tokens, to, tokenIds);
+    }
+
+    function rescueERC1155Batch(
+        address token,
+        address to,
+        uint256[] calldata tokenIds,
+        uint256[] calldata amounts
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _rescueSingleERC1155Batch(token, to, tokenIds, amounts);
     }
 
     // ############################################################

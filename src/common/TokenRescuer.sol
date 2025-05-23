@@ -7,81 +7,159 @@ import {IERC1155} from "forge-std/interfaces/IERC1155.sol";
 
 abstract contract TokenRescuer {
     // Custom errors
-    error InvalidAddress();
-    error TransferFailed();
-    error AmountMustBeGreaterThanZero();
-    error InsufficientBalance();
+    error TokenRescuerInvalidAddress();
+    error TokenRescuerTransferFailed();
+    error TokenRescuerAmountMustBeGreaterThanZero();
+    error TokenRescuerInsufficientBalance();
+    error TokenRescuerArrayLengthMismatch();
 
-    event TokensRescued(
-        address indexed token,
-        address indexed to,
-        uint256 amount
+    event ERC20BatchRescued(address[] tokens, address[] to, uint256[] amounts);
+    event ERC721BatchRescued(
+        address[] tokens,
+        address[] to,
+        uint256[] tokenIds
     );
-    event NFTRescued(
-        address indexed token,
-        address indexed to,
-        uint256 tokenId
-    );
-    event NFTBatchRescued(
-        address indexed token,
-        address indexed to,
+    event ERC1155BatchRescued(
+        address[] tokens,
+        address[] to,
         uint256[] tokenIds,
         uint256[] amounts
     );
 
     /**
-     * @notice Rescues ERC20 tokens from the contract
-     * @param token The address of the ERC20 token to rescue
-     * @param to The address to send the tokens to
-     * @param amount The amount of tokens to rescue
+     * @notice Rescues multiple ERC20 tokens from the contract
+     * @param tokens The addresses of the ERC20 tokens to rescue
+     * @param to The addresses to send the tokens to
+     * @param amounts The amounts of tokens to rescue
      */
-    function _rescueERC20(address token, address to, uint256 amount) internal {
-        if (token == address(0)) revert InvalidAddress();
-        if (to == address(0)) revert InvalidAddress();
-        if (amount == 0) revert AmountMustBeGreaterThanZero();
+    function _rescueERC20Batch(
+        address[] memory tokens,
+        address[] memory to,
+        uint256[] memory amounts
+    ) internal {
+        if (tokens.length == 0)
+            revert TokenRescuerAmountMustBeGreaterThanZero();
+        if (tokens.length != to.length || tokens.length != amounts.length)
+            revert TokenRescuerArrayLengthMismatch();
 
-        uint256 balance = IERC20(token).balanceOf(address(this));
-        if (balance < amount) revert InsufficientBalance();
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (tokens[i] == address(0)) revert TokenRescuerInvalidAddress();
+            if (to[i] == address(0)) revert TokenRescuerInvalidAddress();
+            if (amounts[i] == 0)
+                revert TokenRescuerAmountMustBeGreaterThanZero();
 
-        if (!IERC20(token).transfer(to, amount)) revert TransferFailed();
-        emit TokensRescued(token, to, amount);
+            uint256 balance = IERC20(tokens[i]).balanceOf(address(this));
+            if (balance < amounts[i]) revert TokenRescuerInsufficientBalance();
+
+            if (!IERC20(tokens[i]).transfer(to[i], amounts[i]))
+                revert TokenRescuerTransferFailed();
+        }
+        emit ERC20BatchRescued(tokens, to, amounts);
     }
 
     /**
-     * @notice Rescues an ERC721 token from the contract
-     * @param token The address of the ERC721 token to rescue
-     * @param to The address to send the token to
-     * @param tokenId The ID of the token to rescue
+     * @notice Rescues multiple ERC721 tokens from the contract
+     * @param tokens The addresses of the ERC721 tokens to rescue
+     * @param to The addresses to send the tokens to
+     * @param tokenIds The IDs of the tokens to rescue
      */
-    function _rescueERC721(
-        address token,
-        address to,
-        uint256 tokenId
+    function _rescueERC721Batch(
+        address[] memory tokens,
+        address[] memory to,
+        uint256[] memory tokenIds
     ) internal {
-        if (token == address(0)) revert InvalidAddress();
-        if (to == address(0)) revert InvalidAddress();
+        if (tokens.length == 0)
+            revert TokenRescuerAmountMustBeGreaterThanZero();
+        if (tokens.length != to.length || tokens.length != tokenIds.length)
+            revert TokenRescuerArrayLengthMismatch();
 
-        IERC721(token).safeTransferFrom(address(this), to, tokenId);
-        emit NFTRescued(token, to, tokenId);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (tokens[i] == address(0)) revert TokenRescuerInvalidAddress();
+            if (to[i] == address(0)) revert TokenRescuerInvalidAddress();
+
+            IERC721(tokens[i]).safeTransferFrom(
+                address(this),
+                to[i],
+                tokenIds[i]
+            );
+        }
+        emit ERC721BatchRescued(tokens, to, tokenIds);
     }
 
     /**
      * @notice Rescues multiple ERC1155 tokens from the contract
-     * @param token The address of the ERC1155 token to rescue
-     * @param to The address to send the tokens to
+     * @param tokens The addresses of the ERC1155 tokens to rescue
+     * @param to The addresses to send the tokens to
      * @param tokenIds The IDs of the tokens to rescue
      * @param amounts The amounts of each token to rescue
      */
-    function _rescueERC721Batch(
+    function _rescueERC1155Batch(
+        address[] memory tokens,
+        address[] memory to,
+        uint256[] memory tokenIds,
+        uint256[] memory amounts
+    ) internal {
+        if (tokens.length == 0)
+            revert TokenRescuerAmountMustBeGreaterThanZero();
+        if (
+            tokens.length != to.length ||
+            tokens.length != tokenIds.length ||
+            tokens.length != amounts.length
+        ) revert TokenRescuerArrayLengthMismatch();
+
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (tokens[i] == address(0)) revert TokenRescuerInvalidAddress();
+            if (to[i] == address(0)) revert TokenRescuerInvalidAddress();
+            if (amounts[i] == 0)
+                revert TokenRescuerAmountMustBeGreaterThanZero();
+
+            // Balance check for ERC1155
+            uint256 balance = IERC1155(tokens[i]).balanceOf(
+                address(this),
+                tokenIds[i]
+            );
+            if (balance < amounts[i]) revert TokenRescuerInsufficientBalance();
+
+            uint256[] memory singleTokenId = new uint256[](1);
+            uint256[] memory singleAmount = new uint256[](1);
+            singleTokenId[0] = tokenIds[i];
+            singleAmount[0] = amounts[i];
+
+            IERC1155(tokens[i]).safeBatchTransferFrom(
+                address(this),
+                to[i],
+                singleTokenId,
+                singleAmount,
+                ""
+            );
+        }
+        emit ERC1155BatchRescued(tokens, to, tokenIds, amounts);
+    }
+
+    /**
+     * @notice Rescues multiple tokenIds/amounts from a single ERC1155 token to a single recipient
+     */
+    function _rescueSingleERC1155Batch(
         address token,
         address to,
-        uint256[] calldata tokenIds,
-        uint256[] calldata amounts
+        uint256[] memory tokenIds,
+        uint256[] memory amounts
     ) internal {
-        if (token == address(0)) revert InvalidAddress();
-        if (to == address(0)) revert InvalidAddress();
-        if (tokenIds.length != amounts.length) revert InvalidAddress();
-
+        if (token == address(0)) revert TokenRescuerInvalidAddress();
+        if (to == address(0)) revert TokenRescuerInvalidAddress();
+        if (tokenIds.length == 0)
+            revert TokenRescuerAmountMustBeGreaterThanZero();
+        if (tokenIds.length != amounts.length)
+            revert TokenRescuerArrayLengthMismatch();
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            if (amounts[i] == 0)
+                revert TokenRescuerAmountMustBeGreaterThanZero();
+            uint256 balance = IERC1155(token).balanceOf(
+                address(this),
+                tokenIds[i]
+            );
+            if (balance < amounts[i]) revert TokenRescuerInsufficientBalance();
+        }
         IERC1155(token).safeBatchTransferFrom(
             address(this),
             to,
@@ -89,6 +167,11 @@ abstract contract TokenRescuer {
             amounts,
             ""
         );
-        emit NFTBatchRescued(token, to, tokenIds, amounts);
+        // Emit the same event for consistency
+        address[] memory tokens = new address[](1);
+        address[] memory tos = new address[](1);
+        tokens[0] = token;
+        tos[0] = to;
+        emit ERC1155BatchRescued(tokens, tos, tokenIds, amounts);
     }
 }
