@@ -2027,5 +2027,58 @@ contract TestLuckyBuyCommit is Test {
         vm.stopPrank();
     }
 
+    function testRescueETH() public {
+        // Fund the contract with some ETH
+        vm.deal(address(luckyBuy), 10 ether);
+
+        uint256 initialBalance = bob.balance;
+        uint256 rescueAmount = 5 ether;
+
+        vm.startPrank(admin);
+        luckyBuy.rescueETH(bob, rescueAmount);
+        vm.stopPrank();
+
+        assertEq(bob.balance, initialBalance + rescueAmount);
+        assertEq(address(luckyBuy).balance, 5 ether);
+    }
+
+    function testRescueETHNonAdmin() public {
+        vm.deal(address(luckyBuy), 10 ether);
+
+        vm.startPrank(user);
+        vm.expectRevert();
+        luckyBuy.rescueETH(bob, 5 ether);
+        vm.stopPrank();
+    }
+
+    function testRescueETHZeroAddress() public {
+        vm.deal(address(luckyBuy), 10 ether);
+
+        vm.startPrank(admin);
+        vm.expectRevert(TokenRescuer.TokenRescuerInvalidAddress.selector);
+        luckyBuy.rescueETH(address(0), 5 ether);
+        vm.stopPrank();
+    }
+
+    function testRescueETHZeroAmount() public {
+        vm.deal(address(luckyBuy), 10 ether);
+
+        vm.startPrank(admin);
+        vm.expectRevert(
+            TokenRescuer.TokenRescuerAmountMustBeGreaterThanZero.selector
+        );
+        luckyBuy.rescueETH(bob, 0);
+        vm.stopPrank();
+    }
+
+    function testRescueETHInsufficientBalance() public {
+        vm.deal(address(luckyBuy), 10 ether);
+
+        vm.startPrank(admin);
+        vm.expectRevert(TokenRescuer.TokenRescuerInsufficientBalance.selector);
+        luckyBuy.rescueETH(bob, 20 ether);
+        vm.stopPrank();
+    }
+
     receive() external payable {}
 }

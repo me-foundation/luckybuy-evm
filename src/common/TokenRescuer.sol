@@ -25,6 +25,7 @@ abstract contract TokenRescuer {
         uint256[] tokenIds,
         uint256[] amounts
     );
+    event ETHRescued(address to, uint256 amount);
 
     /**
      * @notice Rescues multiple ERC20 tokens from the contract
@@ -134,5 +135,22 @@ abstract contract TokenRescuer {
             );
         }
         emit ERC1155BatchRescued(tokens, to, tokenIds, amounts);
+    }
+
+    /**
+     * @notice Rescues ETH from the contract
+     * @param to The address to send the ETH to
+     * @param amount The amount of ETH to rescue
+     */
+    function _rescueETH(address to, uint256 amount) internal {
+        if (to == address(0)) revert TokenRescuerInvalidAddress();
+        if (amount == 0) revert TokenRescuerAmountMustBeGreaterThanZero();
+        if (address(this).balance < amount)
+            revert TokenRescuerInsufficientBalance();
+
+        (bool success, ) = to.call{value: amount}("");
+        if (!success) revert TokenRescuerTransferFailed();
+
+        emit ETHRescued(to, amount);
     }
 }

@@ -609,8 +609,7 @@ contract LuckyBuy is
 
         uint256 currentBalance = address(this).balance;
 
-        (bool success, ) = payable(feeReceiver).call{value: currentBalance}("");
-        if (!success) revert WithdrawalFailed();
+        _rescueETH(feeReceiver, currentBalance);
 
         _pause();
         emit Withdrawal(msg.sender, currentBalance, feeReceiver);
@@ -770,6 +769,13 @@ contract LuckyBuy is
         uint256[] calldata amounts
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _rescueERC1155Batch(tokens, tos, tokenIds, amounts);
+    }
+
+    function rescueETH(
+        address to,
+        uint256 amount
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _rescueETH(to, amount);
     }
 
     // ############################################################
