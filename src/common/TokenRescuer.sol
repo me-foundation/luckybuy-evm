@@ -135,43 +135,4 @@ abstract contract TokenRescuer {
         }
         emit ERC1155BatchRescued(tokens, to, tokenIds, amounts);
     }
-
-    /**
-     * @notice Rescues multiple tokenIds/amounts from a single ERC1155 token to a single recipient
-     */
-    function _rescueSingleERC1155Batch(
-        address token,
-        address to,
-        uint256[] memory tokenIds,
-        uint256[] memory amounts
-    ) internal {
-        if (token == address(0)) revert TokenRescuerInvalidAddress();
-        if (to == address(0)) revert TokenRescuerInvalidAddress();
-        if (tokenIds.length == 0)
-            revert TokenRescuerAmountMustBeGreaterThanZero();
-        if (tokenIds.length != amounts.length)
-            revert TokenRescuerArrayLengthMismatch();
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            if (amounts[i] == 0)
-                revert TokenRescuerAmountMustBeGreaterThanZero();
-            uint256 balance = IERC1155(token).balanceOf(
-                address(this),
-                tokenIds[i]
-            );
-            if (balance < amounts[i]) revert TokenRescuerInsufficientBalance();
-        }
-        IERC1155(token).safeBatchTransferFrom(
-            address(this),
-            to,
-            tokenIds,
-            amounts,
-            ""
-        );
-        // Emit the same event for consistency
-        address[] memory tokens = new address[](1);
-        address[] memory tos = new address[](1);
-        tokens[0] = token;
-        tos[0] = to;
-        emit ERC1155BatchRescued(tokens, tos, tokenIds, amounts);
-    }
 }

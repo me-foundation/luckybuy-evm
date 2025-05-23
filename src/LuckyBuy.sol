@@ -749,27 +749,27 @@ contract LuckyBuy is
 
     function rescueERC20Batch(
         address[] calldata tokens,
-        address[] calldata to,
+        address[] calldata tos,
         uint256[] calldata amounts
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _rescueERC20Batch(tokens, to, amounts);
+        _rescueERC20Batch(tokens, tos, amounts);
     }
 
     function rescueERC721Batch(
         address[] calldata tokens,
-        address[] calldata to,
+        address[] calldata tos,
         uint256[] calldata tokenIds
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _rescueERC721Batch(tokens, to, tokenIds);
+        _rescueERC721Batch(tokens, tos, tokenIds);
     }
 
     function rescueERC1155Batch(
-        address token,
-        address to,
+        address[] calldata tokens,
+        address[] calldata tos,
         uint256[] calldata tokenIds,
         uint256[] calldata amounts
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _rescueSingleERC1155Batch(token, to, tokenIds, amounts);
+        _rescueERC1155Batch(tokens, tos, tokenIds, amounts);
     }
 
     // ############################################################

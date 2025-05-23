@@ -1781,16 +1781,22 @@ contract TestLuckyBuyCommit is Test {
         token.mint(address(luckyBuy), 2, 200);
 
         // Test batch rescue
+        address[] memory tokens = new address[](2);
+        address[] memory tos = new address[](2);
         uint256[] memory tokenIds = new uint256[](2);
         uint256[] memory amounts = new uint256[](2);
 
+        tokens[0] = address(token);
+        tokens[1] = address(token);
+        tos[0] = bob;
+        tos[1] = bob;
         tokenIds[0] = 1;
         tokenIds[1] = 2;
         amounts[0] = 50;
         amounts[1] = 100;
 
         vm.startPrank(admin);
-        luckyBuy.rescueERC1155Batch(address(token), bob, tokenIds, amounts);
+        luckyBuy.rescueERC1155Batch(tokens, tos, tokenIds, amounts);
         vm.stopPrank();
 
         assertEq(token.balanceOf(bob, 1), 50);
@@ -1869,15 +1875,19 @@ contract TestLuckyBuyCommit is Test {
         MockERC1155 token = new MockERC1155();
         token.mint(address(luckyBuy), 1, 100);
 
+        address[] memory tokens = new address[](1);
+        address[] memory tos = new address[](1);
         uint256[] memory tokenIds = new uint256[](1);
         uint256[] memory amounts = new uint256[](1);
 
+        tokens[0] = address(token);
+        tos[0] = bob;
         tokenIds[0] = 1;
         amounts[0] = 50;
 
         vm.startPrank(user);
         vm.expectRevert();
-        luckyBuy.rescueERC1155Batch(address(token), bob, tokenIds, amounts);
+        luckyBuy.rescueERC1155Batch(tokens, tos, tokenIds, amounts);
         vm.stopPrank();
     }
 
@@ -1999,16 +2009,21 @@ contract TestLuckyBuyCommit is Test {
         MockERC1155 token = new MockERC1155();
         token.mint(address(luckyBuy), 1, 100);
 
+        address[] memory tokens = new address[](2);
+        address[] memory tos = new address[](1);
         uint256[] memory tokenIds = new uint256[](2);
         uint256[] memory amounts = new uint256[](1);
 
+        tokens[0] = address(token);
+        tokens[1] = address(token);
+        tos[0] = bob;
         tokenIds[0] = 1;
         tokenIds[1] = 2;
         amounts[0] = 50;
 
         vm.startPrank(admin);
         vm.expectRevert(TokenRescuer.TokenRescuerArrayLengthMismatch.selector);
-        luckyBuy.rescueERC1155Batch(address(token), bob, tokenIds, amounts);
+        luckyBuy.rescueERC1155Batch(tokens, tos, tokenIds, amounts);
         vm.stopPrank();
     }
 
